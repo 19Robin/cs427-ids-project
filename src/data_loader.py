@@ -17,50 +17,107 @@ from sklearn.datasets import make_classification
 
 RANDOM_SEED = 42
 
+# Fixed protocol encoding shared by BOTH datasets. This matters: if each
+# dataset were encoded independently (e.g. via pandas .cat.codes), "tcp"
+# could end up as a different number in each dataset purely by chance,
+# silently corrupting the cross-domain comparison. Using one fixed map
+# for both loaders guarantees "tcp" always means the same number
+# everywhere. Anything not listed here (UNSW-NB15 has many more protocol
+# types than 5G-NIDD) falls into the "other" bucket.
+PROTOCOL_MAP = {"tcp": 1, "udp": 2, "icmp": 3}
+PROTOCOL_OTHER = 0
+
+
+def encode_protocol(series):
+    return series.astype(str).str.lower().map(PROTOCOL_MAP).fillna(PROTOCOL_OTHER).astype(int)
+
 
 def load_domain_a(path="data/raw/5g_nidd.csv"):
     """
     Load and clean the 5G-NIDD dataset (training domain).
 
-    TODO once the real dataset is downloaded:
-        df = pd.read_csv(path)
-        # drop irrelevant columns (e.g. IDs, timestamps if not useful)
-        # handle missing values
-        # encode the label column as 0 (benign) / 1 (attack)
-        # separate into X (features) and y (label)
-        return X, y
+    5G-NIDD is Argus-based network flow data. We select a subset of features
+    that conceptually also exist in UNSW-NB15 (duration, packet counts, byte
+    counts, rate, protocol, TTL, loss, TCP timing), so the same trained model
+    can later be applied to UNSW-NB15's differently-named columns without
+    needing to retrain -- this shared feature set is what makes the
+    cross-domain comparison possible at all.
     """
-    print("[PLACEHOLDER] Using synthetic data to stand in for 5G-NIDD.")
-    X, y = make_classification(
-        n_samples=5000, n_features=20, n_informative=12, n_redundant=4,
-        weights=[0.7, 0.3], flip_y=0.02, class_sep=1.5, random_state=1
-    )
-    columns = [f"feature_{i}" for i in range(X.shape[1])]
-    X_df = pd.DataFrame(X, columns=columns)
-    y_series = pd.Series(y, name="label")
-    return X_df, y_series
+    df = pd.read_csv(path)
+
+    # Build the shared feature schema, renamed to common names
+    shared = pd.DataFrame({
+        "duration": df["Dur"],
+        "src_packets": df["SrcPkts"],
+        "dst_packets": df["DstPkts"],
+        "src_bytes": df["SrcBytes"],
+        "dst_bytes": df["DstBytes"],
+        "rate": df["Rate"],
+        "src_ttl": df["sTtl"],
+        "dst_ttl": df["dTtl"],
+        "src_loss": df["SrcLoss"],
+        "dst_loss": df["DstLoss"],
+        "tcp_rtt": df["TcpRtt"],
+        "synack": df["SynAck"],
+        "ackdat": df["AckDat"],
+        "protocol": df["Proto"],
+    })
+
+    # Fill any missing numeric values with 0 (common for fields like TCP
+    # timing that don't apply to non-TCP protocols such as ICMP/UDP)
+    numeric_cols = shared.columns.drop("protocol")
+    shared[numeric_cols] = shared[numeric_cols].fillna(0)
+
+    # Encode protocol using the shared fixed map (see top of file) so
+    # "tcp"/"udp"/"icmp" get identical codes in both datasets.
+    shared["protocol"] = encode_protocol(shared["protocol"])
+
+    # Label: Benign -> 0, Malicious -> 1
+    y = (df["Label"] == "Malicious").astype(int)
+    y.name = "label"
+
+    return shared, y
 
 
 def load_domain_b(path="data/raw/unsw_nb15.csv"):
     """
     Load and clean the UNSW-NB15 dataset (cross-domain test domain).
 
-    TODO once the real dataset is downloaded:
-        df = pd.read_csv(path)
-        # UNSW-NB15 has different column names/features than 5G-NIDD --
-        # you will need to select/align a comparable feature subset,
-        # or retrain domain A's model using only shared feature types.
-        return X, y
+    Maps UNSW-NB15's columns onto the exact same shared feature schema used
+    in load_domain_a(), so the model trained on 5G-NIDD can be evaluated on
+    this dataset directly, with no retraining.
     """
-    print("[PLACEHOLDER] Using synthetic data to stand in for UNSW-NB15.")
-    X, y = make_classification(
-        n_samples=5000, n_features=20, n_informative=12, n_redundant=4,
-        weights=[0.6, 0.4], flip_y=0.05, class_sep=0.9, random_state=2
-    )
-    columns = [f"feature_{i}" for i in range(X.shape[1])]
-    X_df = pd.DataFrame(X, columns=columns)
-    y_series = pd.Series(y, name="label")
-    return X_df, y_series
+    df = pd.read_csv(path)
+
+    shared = pd.DataFrame({
+        "duration": df["dur"],
+        "src_packets": df["spkts"],
+        "dst_packets": df["dpkts"],
+        "src_bytes": df["sbytes"],
+        "dst_bytes": df["dbytes"],
+        "rate": df["rate"],
+        "src_ttl": df["sttl"],
+        "dst_ttl": df["dttl"],
+        "src_loss": df["sloss"],
+        "dst_loss": df["dloss"],
+        "tcp_rtt": df["tcprtt"],
+        "synack": df["synack"],
+        "ackdat": df["ackdat"],
+        "protocol": df["proto"],
+    })
+
+    numeric_cols = shared.columns.drop("protocol")
+    shared[numeric_cols] = shared[numeric_cols].fillna(0)
+
+    # Encode protocol using the same shared fixed map used in load_domain_a,
+    # so "tcp"/"udp"/"icmp" mean the same numeric value in both datasets.
+    shared["protocol"] = encode_protocol(shared["protocol"])
+
+    # Label is already 0 (normal) / 1 (attack) in this dataset
+    y = df["label"].astype(int)
+    y.name = "label"
+
+    return shared, y
 
 
 if __name__ == "__main__":
