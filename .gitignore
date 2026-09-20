@@ -1,0 +1,25 @@
+# Virtual environment
+venv/
+env/
+
+# Datasets (too large / shouldn't be on GitHub)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Trained models (can be large)
+outputs/models/*.pkl
+outputs/models/*.joblib
+!outputs/models/.gitkeep
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
