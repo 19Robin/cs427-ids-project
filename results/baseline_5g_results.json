@@ -1,0 +1,35 @@
+{
+    "dataset": "5G-NIDD",
+    "experiment": "In-domain baseline",
+    "model": "Random Forest",
+    "n_estimators": 100,
+    "random_state": 42,
+    "features": [
+        "Rate",
+        "Packet_Count",
+        "Mean_Packet_Size",
+        "TTL",
+        "TCP",
+        "UDP",
+        "ICMP"
+    ],
+    "training_rows": 972540,
+    "testing_rows": 243136,
+    "accuracy": 0.7412353579889445,
+    "precision": 0.7407388462631429,
+    "recall": 0.8828294870318565,
+    "f1_score": 0.805566457857538,
+    "training_time_seconds": 31.84744644165039,
+    "prediction_time_seconds": 0.43675851821899414,
+    "model_size_mb": 147.13597965240479,
+    "confusion_matrix": [
+        [
+            49888,
+            45617
+        ],
+        [
+            17298,
+            130333
+        ]
+    ]
+}

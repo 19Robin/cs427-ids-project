@@ -1,0 +1,43 @@
+{
+    "experiment": "Cross-domain evaluation",
+    "training_dataset": "5G-NIDD",
+    "testing_dataset": "CICIoT2023",
+    "model": "Random Forest",
+    "features": [
+        "Rate",
+        "Packet_Count",
+        "Mean_Packet_Size",
+        "TTL",
+        "TCP",
+        "UDP",
+        "ICMP"
+    ],
+    "testing_rows": 3579528,
+    "accuracy": 0.03411203935267443,
+    "precision": 0.928531308274731,
+    "recall": 0.011822964495060892,
+    "f1_score": 0.02334863148534256,
+    "prediction_time_seconds": 2.80826997756958,
+    "confusion_matrix": [
+        [
+            80777,
+            3181
+        ],
+        [
+            3454242,
+            41328
+        ]
+    ],
+    "baseline_5g": {
+        "accuracy": 0.7412353579889445,
+        "precision": 0.7407388462631429,
+        "recall": 0.8828294870318565,
+        "f1_score": 0.805566457857538
+    },
+    "change": {
+        "accuracy": -0.70712331863627,
+        "precision": 0.18779246201158806,
+        "recall": -0.8710065225367956,
+        "f1_score": -0.7822178263721954
+    }
+}

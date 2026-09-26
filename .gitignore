@@ -23,3 +23,9 @@ __pycache__/
 # OS files
 .DS_Store
 Thumbs.db
+
+
+# Trained machine learning models
+models/*.joblib
+# Trained models
+models/*.joblib
