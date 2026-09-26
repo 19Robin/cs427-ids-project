@@ -1,11 +1,10 @@
-import os
+
+from pathlib import Path
 import json
 import joblib
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
-
-from sklearn.metrics import confusion_matrix
 
 
 # ============================================================
@@ -23,51 +22,76 @@ st.set_page_config(
 # PATHS
 # ============================================================
 
-BASE_DIR = r"D:\cs427-ids-project"
+# Works both locally and on Streamlit Cloud.
+# app.py is located in the project root.
 
-RESULTS_DIR = os.path.join(BASE_DIR, "results")
-MODELS_DIR = os.path.join(BASE_DIR, "models")
+BASE_DIR = Path(__file__).resolve().parent
+
+RESULTS_DIR = BASE_DIR / "results"
+MODELS_DIR = BASE_DIR / "models"
 
 
-BASELINE_RESULTS = os.path.join(
-    RESULTS_DIR,
-    "baseline_5g_results.json"
+BASELINE_RESULTS = RESULTS_DIR / "baseline_5g_results.json"
+
+LIGHTWEIGHT_RESULTS = (
+    RESULTS_DIR / "lightweight_model_comparison.csv"
 )
 
-LIGHTWEIGHT_RESULTS = os.path.join(
-    RESULTS_DIR,
-    "lightweight_model_comparison.csv"
+CROSS_DOMAIN_RESULTS = (
+    RESULTS_DIR / "lightweight_cross_domain_comparison.csv"
 )
 
-CROSS_DOMAIN_RESULTS = os.path.join(
-    RESULTS_DIR,
-    "lightweight_cross_domain_comparison.csv"
+FEATURE_IMPORTANCE = (
+    RESULTS_DIR / "baseline_feature_importance.csv"
 )
 
-FEATURE_IMPORTANCE = os.path.join(
-    RESULTS_DIR,
-    "baseline_feature_importance.csv"
+ATTACK_RESULTS = (
+    RESULTS_DIR / "attack_type_results.csv"
 )
 
-ATTACK_RESULTS = os.path.join(
-    RESULTS_DIR,
-    "attack_type_results.csv"
+FEATURE_SHIFT = (
+    RESULTS_DIR / "feature_distribution_shift.csv"
 )
 
-FEATURE_SHIFT = os.path.join(
-    RESULTS_DIR,
-    "feature_shift_results.csv"
+PROTOCOL_SHIFT = (
+    RESULTS_DIR / "protocol_distribution_shift.csv"
 )
 
-BASELINE_MODEL = os.path.join(
-    MODELS_DIR,
-    "random_forest_baseline.joblib"
+BASELINE_MODEL = (
+    MODELS_DIR / "random_forest_baseline.joblib"
 )
 
-LIGHTWEIGHT_MODEL = os.path.join(
-    MODELS_DIR,
-    "random_forest_10_trees.joblib"
+LIGHTWEIGHT_MODEL = (
+    MODELS_DIR / "random_forest_10_trees.joblib"
 )
+
+
+# ============================================================
+# LOAD DATA
+# ============================================================
+
+@st.cache_data
+def load_csv(path):
+    if path.exists():
+        return pd.read_csv(path)
+    return None
+
+
+@st.cache_data
+def load_json(path):
+    if path.exists():
+        with open(path, "r") as file:
+            return json.load(file)
+    return None
+
+
+baseline = load_json(BASELINE_RESULTS)
+lightweight = load_csv(LIGHTWEIGHT_RESULTS)
+cross_domain = load_csv(CROSS_DOMAIN_RESULTS)
+feature_importance = load_csv(FEATURE_IMPORTANCE)
+attack_results = load_csv(ATTACK_RESULTS)
+feature_shift = load_csv(FEATURE_SHIFT)
+protocol_shift = load_csv(PROTOCOL_SHIFT)
 
 
 # ============================================================
@@ -88,33 +112,6 @@ st.markdown(
 )
 
 st.divider()
-
-
-# ============================================================
-# LOAD DATA
-# ============================================================
-
-@st.cache_data
-def load_csv(path):
-    if os.path.exists(path):
-        return pd.read_csv(path)
-    return None
-
-
-@st.cache_data
-def load_json(path):
-    if os.path.exists(path):
-        with open(path, "r") as file:
-            return json.load(file)
-    return None
-
-
-baseline = load_json(BASELINE_RESULTS)
-lightweight = load_csv(LIGHTWEIGHT_RESULTS)
-cross_domain = load_csv(CROSS_DOMAIN_RESULTS)
-feature_importance = load_csv(FEATURE_IMPORTANCE)
-attack_results = load_csv(ATTACK_RESULTS)
-feature_shift = load_csv(FEATURE_SHIFT)
 
 
 # ============================================================
@@ -146,9 +143,10 @@ if page == "Overview":
 
     st.write(
         """
-        The purpose of this experiment is to measure how a lightweight
-        intrusion detection model performs when it is trained on one
-        network and tested on a different network without retraining.
+        The purpose of this experiment is to measure how a
+        lightweight intrusion detection model performs when it
+        is trained on one network and tested on a different
+        network without retraining.
         """
     )
 
@@ -229,23 +227,19 @@ elif page == "Model Performance":
 
         display_df = lightweight.copy()
 
-        display_df["Accuracy"] *= 100
-        display_df["Precision"] *= 100
-        display_df["Recall"] *= 100
-        display_df["F1"] *= 100
+        for column in [
+            "Accuracy",
+            "Precision",
+            "Recall",
+            "F1"
+        ]:
+            if column in display_df.columns:
+                display_df[column] *= 100
 
         st.subheader("In-Domain Performance — 5G-NIDD")
 
         st.dataframe(
-            display_df.style.format({
-                "Accuracy": "{:.2f}%",
-                "Precision": "{:.2f}%",
-                "Recall": "{:.2f}%",
-                "F1": "{:.2f}%",
-                "Training_Time_Seconds": "{:.2f}",
-                "Prediction_Time_Seconds": "{:.2f}",
-                "Model_Size_MB": "{:.2f}"
-            }),
+            display_df,
             use_container_width=True,
             hide_index=True
         )
@@ -266,6 +260,8 @@ elif page == "Model Performance":
 
         st.pyplot(fig)
 
+        plt.close(fig)
+
         st.subheader("Model Size")
 
         fig, ax = plt.subplots()
@@ -281,9 +277,18 @@ elif page == "Model Performance":
 
         st.pyplot(fig)
 
+        plt.close(fig)
+
+    else:
+
+        st.error(
+            "The lightweight model comparison results "
+            "could not be found."
+        )
+
 
 # ============================================================
-# CROSS-DOMAIN
+# CROSS-DOMAIN EVALUATION
 # ============================================================
 
 elif page == "Cross-Domain Evaluation":
@@ -292,8 +297,9 @@ elif page == "Cross-Domain Evaluation":
 
     st.write(
         """
-        Models were trained using 5G-NIDD and then tested directly
-        on CICIoT2023. No retraining or parameter changes were made.
+        Models were trained using 5G-NIDD and then tested
+        directly on CICIoT2023. No retraining or parameter
+        changes were made.
         """
     )
 
@@ -301,52 +307,53 @@ elif page == "Cross-Domain Evaluation":
 
         df = cross_domain.copy()
 
-        col1, col2, col3, col4 = st.columns(4)
+        baseline_rows = df[df["Trees"] == 100]
 
-        baseline_row = df[df["Trees"] == 100].iloc[0]
+        if not baseline_rows.empty:
 
-        with col1:
-            st.metric(
-                "Accuracy",
-                f"{baseline_row['Accuracy'] * 100:.2f}%"
-            )
+            baseline_row = baseline_rows.iloc[0]
 
-        with col2:
-            st.metric(
-                "Precision",
-                f"{baseline_row['Precision'] * 100:.2f}%"
-            )
+            col1, col2, col3, col4 = st.columns(4)
 
-        with col3:
-            st.metric(
-                "Malicious Recall",
-                f"{baseline_row['Recall'] * 100:.2f}%"
-            )
+            with col1:
+                st.metric(
+                    "Accuracy",
+                    f"{baseline_row['Accuracy'] * 100:.2f}%"
+                )
 
-        with col4:
-            st.metric(
-                "F1 Score",
-                f"{baseline_row['F1'] * 100:.2f}%"
-            )
+            with col2:
+                st.metric(
+                    "Precision",
+                    f"{baseline_row['Precision'] * 100:.2f}%"
+                )
+
+            with col3:
+                st.metric(
+                    "Malicious Recall",
+                    f"{baseline_row['Recall'] * 100:.2f}%"
+                )
+
+            with col4:
+                st.metric(
+                    "F1 Score",
+                    f"{baseline_row['F1'] * 100:.2f}%"
+                )
 
         st.subheader("All Models on CICIoT2023")
 
         display_df = df.copy()
 
-        display_df["Accuracy"] *= 100
-        display_df["Precision"] *= 100
-        display_df["Recall"] *= 100
-        display_df["F1"] *= 100
+        for column in [
+            "Accuracy",
+            "Precision",
+            "Recall",
+            "F1"
+        ]:
+            if column in display_df.columns:
+                display_df[column] *= 100
 
         st.dataframe(
-            display_df.style.format({
-                "Accuracy": "{:.2f}%",
-                "Precision": "{:.2f}%",
-                "Recall": "{:.2f}%",
-                "F1": "{:.2f}%",
-                "Prediction_Time_Seconds": "{:.2f}",
-                "Model_Size_MB": "{:.2f}"
-            }),
+            display_df,
             use_container_width=True,
             hide_index=True
         )
@@ -363,13 +370,24 @@ elif page == "Cross-Domain Evaluation":
 
         ax.set_xlabel("Number of Trees")
         ax.set_ylabel("F1 Score (%)")
-        ax.set_title("Cross-Domain F1 Score on CICIoT2023")
+        ax.set_title(
+            "Cross-Domain F1 Score on CICIoT2023"
+        )
 
         st.pyplot(fig)
 
+        plt.close(fig)
+
         st.warning(
-            "The models show a severe drop in intrusion detection "
-            "performance when transferred from 5G-NIDD to CICIoT2023."
+            "The models show a severe drop in intrusion "
+            "detection performance when transferred from "
+            "5G-NIDD to CICIoT2023."
+        )
+
+    else:
+
+        st.error(
+            "The cross-domain results file could not be found."
         )
 
 
@@ -385,9 +403,9 @@ elif page == "Attack Analysis":
 
         st.write(
             """
-            Detection rate represents the percentage of samples from
-            each CICIoT2023 attack category that were classified as
-            malicious.
+            Detection rate represents the percentage of samples
+            from each CICIoT2023 attack category that were
+            classified as malicious.
             """
         )
 
@@ -397,7 +415,6 @@ elif page == "Attack Analysis":
             hide_index=True
         )
 
-        # Try to identify useful columns automatically
         attack_column = None
         rate_column = None
 
@@ -405,10 +422,17 @@ elif page == "Attack Analysis":
 
             lower = col.lower()
 
-            if "attack" in lower or "label" in lower:
+            if (
+                "attack" in lower
+                or "label" in lower
+                or "type" in lower
+            ):
                 attack_column = col
 
-            if "rate" in lower or "detection" in lower:
+            if (
+                "rate" in lower
+                or "detection" in lower
+            ):
                 rate_column = col
 
         if attack_column and rate_column:
@@ -435,10 +459,12 @@ elif page == "Attack Analysis":
 
             st.pyplot(fig)
 
+            plt.close(fig)
+
     else:
 
         st.info(
-            "Attack analysis results file was not found."
+            "The attack-type results file could not be found."
         )
 
 
@@ -452,12 +478,15 @@ elif page == "Feature Shift":
 
     st.write(
         """
-        The same seven features were compared between 5G-NIDD and
-        CICIoT2023 to identify differences in their distributions.
+        The same seven common features were compared between
+        5G-NIDD and CICIoT2023 to identify differences in their
+        distributions.
         """
     )
 
     if feature_shift is not None:
+
+        st.subheader("Feature Distribution Results")
 
         st.dataframe(
             feature_shift,
@@ -467,11 +496,22 @@ elif page == "Feature Shift":
 
     else:
 
-        st.info(
-            "Feature shift results file was not found."
+        st.error(
+            "The feature distribution shift file could not "
+            "be found."
         )
 
-    st.subheader("Important Feature Differences")
+    if protocol_shift is not None:
+
+        st.subheader("Protocol Distribution Shift")
+
+        st.dataframe(
+            protocol_shift,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    st.subheader("Main Feature Differences")
 
     st.markdown(
         """
@@ -508,64 +548,84 @@ elif page == "Prediction Demo":
         """
     )
 
-    col1, col2 = st.columns(2)
+    if not LIGHTWEIGHT_MODEL.exists():
 
-    with col1:
+        st.warning(
+            """
+            The 10-tree Random Forest model is not available
+            in this Streamlit deployment.
 
-        rate = st.number_input(
-            "Rate",
-            min_value=0.0,
-            value=100.0
+            The trained model files are intentionally excluded
+            from GitHub because of their file size. The
+            evaluation results and charts remain available
+            throughout the dashboard.
+            """
         )
 
-        packet_count = st.number_input(
-            "Packet Count",
-            min_value=1.0,
-            value=10.0
+        st.info(
+            "The Prediction Demo works when running the project "
+            "locally because the model file exists in the local "
+            "models/ folder."
         )
 
-        mean_packet_size = st.number_input(
-            "Mean Packet Size",
-            min_value=0.0,
-            value=100.0
-        )
+    else:
 
-        ttl = st.number_input(
-            "TTL",
-            min_value=0.0,
-            max_value=255.0,
-            value=64.0
-        )
+        col1, col2 = st.columns(2)
 
-    with col2:
+        with col1:
 
-        tcp = st.number_input(
-            "TCP",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.0
-        )
+            rate = st.number_input(
+                "Rate",
+                min_value=0.0,
+                value=100.0
+            )
 
-        udp = st.number_input(
-            "UDP",
-            min_value=0.0,
-            max_value=1.0,
-            value=1.0
-        )
+            packet_count = st.number_input(
+                "Packet Count",
+                min_value=1.0,
+                value=10.0
+            )
 
-        icmp = st.number_input(
-            "ICMP",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.0
-        )
+            mean_packet_size = st.number_input(
+                "Mean Packet Size",
+                min_value=0.0,
+                value=100.0
+            )
 
-    if st.button(
-        "🔍 Analyze Traffic",
-        type="primary"
-    ):
+            ttl = st.number_input(
+                "TTL",
+                min_value=0.0,
+                max_value=255.0,
+                value=64.0
+            )
 
-        if os.path.exists(LIGHTWEIGHT_MODEL):
+        with col2:
+
+            tcp = st.number_input(
+                "TCP",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.0
+            )
+
+            udp = st.number_input(
+                "UDP",
+                min_value=0.0,
+                max_value=1.0,
+                value=1.0
+            )
+
+            icmp = st.number_input(
+                "ICMP",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.0
+            )
+
+        if st.button(
+            "🔍 Analyze Traffic",
+            type="primary"
+        ):
 
             model = joblib.load(
                 LIGHTWEIGHT_MODEL
@@ -619,12 +679,6 @@ elif page == "Prediction Demo":
                 f"{malicious_probability * 100:.2f}%"
             )
 
-        else:
-
-            st.error(
-                "The 10-tree Random Forest model was not found."
-            )
-
 
 # ============================================================
 # FOOTER
@@ -639,3 +693,4 @@ st.sidebar.caption(
 st.sidebar.caption(
     "5G-NIDD → CICIoT2023"
 )
+
