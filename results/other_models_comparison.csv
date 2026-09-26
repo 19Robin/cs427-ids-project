@@ -1,0 +1,4 @@
+Model,Model_Size_MB,Training_Time_Sec,InDomain_Prediction_Time_Sec,InDomain_Accuracy,InDomain_Precision,InDomain_Recall,InDomain_F1,CrossDomain_Prediction_Time_Sec,CrossDomain_Accuracy,CrossDomain_Precision,CrossDomain_Recall,CrossDomain_F1
+Decision Tree,1.57,1.3634,0.0326,0.741,0.7451,0.8716,0.8034,0.201,0.0258,0.7515,0.0036,0.0071
+Logistic Regression,0.0,12.5421,0.0151,0.7543,0.7124,0.9984,0.8315,0.1248,0.0273,0.6307,0.0095,0.0187
+XGBoost,0.2,3.2771,0.0773,0.7662,0.7476,0.9286,0.8283,0.9372,0.0239,0.6128,0.0012,0.0023
