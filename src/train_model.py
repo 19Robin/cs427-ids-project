@@ -21,7 +21,7 @@ import joblib
 # PATHS
 # ============================================================
 
-BASE = Path(r"D:\cs427-ids-project")
+BASE = Path(__file__).resolve().parent.parent
 
 DATA_FILE = BASE / "data" / "processed" / "5g_nidd_processed.csv"
 

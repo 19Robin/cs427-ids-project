@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-BASE = Path(r"D:\cs427-ids-project")
+BASE = Path(__file__).resolve().parent
 
 FIVEG_FILE = BASE / "data" / "raw" / "5g_nidd.csv"
 CIC_DIR = BASE / "data" / "raw" / "cic_iot"

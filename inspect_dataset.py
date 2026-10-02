@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-DATA_DIR = Path(r"D:\cs427-ids-project\data\raw")
+DATA_DIR = Path(__file__).resolve().parent / "data" / "raw"
 
 # Find CSV files
 csv_files = list(DATA_DIR.glob("*.csv"))

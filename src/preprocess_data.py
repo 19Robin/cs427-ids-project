@@ -6,7 +6,7 @@ from pathlib import Path
 # PATHS
 # ============================================================
 
-BASE = Path(r"D:\cs427-ids-project")
+BASE = Path(__file__).resolve().parent.parent
 
 FIVEG_FILE = BASE / "data" / "raw" / "5g_nidd.csv"
 CIC_DIR = BASE / "data" / "raw" / "cic_iot"

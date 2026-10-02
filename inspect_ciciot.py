@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-DATA_DIR = Path(r"D:\cs427-ids-project\data\raw\cic_iot")
+DATA_DIR = Path(__file__).resolve().parent / "data" / "raw" / "cic_iot"
 
 files = sorted(DATA_DIR.glob("Merged*.csv"))
 

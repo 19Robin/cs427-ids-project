@@ -16,7 +16,7 @@ from sklearn.metrics import (
 # PATHS
 # ============================================================
 
-BASE_DIR = r"D:\cs427-ids-project"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 PROCESSED_DATA = os.path.join(
     BASE_DIR,
