@@ -6,7 +6,7 @@ import numpy as np
 # PATHS
 # ============================================================
 
-BASE_DIR = r"D:\cs427-ids-project"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 NIDD_FILE = os.path.join(
     BASE_DIR,

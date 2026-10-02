@@ -19,7 +19,7 @@ import joblib
 # PATHS
 # ============================================================
 
-BASE = Path(r"D:\cs427-ids-project")
+BASE = Path(__file__).resolve().parent.parent
 
 MODEL_FILE = BASE / "models" / "random_forest_baseline.joblib"
 CIC_FILE = BASE / "data" / "processed" / "cic_iot2023_processed.csv"
