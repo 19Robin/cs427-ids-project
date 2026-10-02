@@ -18,6 +18,18 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
+import altair as alt
+
+# Live IDS proof-of-concept (src/live_*.py). Imported defensively so that a
+# problem in the live component can never break the research pages.
+try:
+    from src.live_capture import (
+        DEMO_SCENARIOS, CaptureError, LiveMonitor, capture_status, list_interfaces,
+    )
+    from src.live_predictor import LivePredictor, ModelCompatibilityError
+    LIVE_IMPORT_ERROR = None
+except Exception as live_error:
+    LIVE_IMPORT_ERROR = live_error
 
 
 # ============================================================
@@ -287,6 +299,14 @@ st.markdown(
         }
         .tag-5g  { background: rgba(42,120,214,0.14); color: #1d5fae; }
         .tag-cic { background: rgba(235,104,52,0.16); color: #b44a1f; }
+        .tag-live { background: rgba(12,163,12,0.14); color: #0a7a0a; font-size: 15px; }
+        .tag-stop { background: rgba(122,121,116,0.16); color: #52514e; font-size: 15px; }
+        .tag-sim  { background: rgba(250,178,25,0.22); color: #8a5a00; }
+        .verdict { border-radius: 10px; padding: 14px 18px; font-size: 26px; font-weight: 700; }
+        .verdict-malicious { background: rgba(208,59,59,0.12); color: #a82727; border: 1px solid rgba(208,59,59,0.45); }
+        .verdict-benign    { background: rgba(12,163,12,0.10); color: #0a7a0a; border: 1px solid rgba(12,163,12,0.40); }
+        .verdict-none      { background: rgba(122,121,116,0.10); color: #52514e; border: 1px solid rgba(122,121,116,0.35); }
+        .verdict small { display: block; font-size: 13px; font-weight: 500; opacity: 0.85; }
     </style>
     """,
     unsafe_allow_html=True
@@ -327,7 +347,8 @@ page = st.sidebar.radio(
         "Cross-Domain Evaluation",
         "Attack Analysis",
         "Feature Shift",
-        "Prediction Demo"
+        "Prediction Demo",
+        "Live IDS Monitoring"
     ]
 )
 
@@ -1784,6 +1805,494 @@ elif page == "Prediction Demo":
             "Its predictions on traffic from other networks (such as CICIoT2023) "
             "are unreliable."
         )
+
+
+# ============================================================
+# LIVE IDS MONITORING
+# ============================================================
+
+COLOR_BENIGN = "#0ca30c"
+COLOR_MALICIOUS = "#d03b3b"
+VERDICT_SCALE = alt.Scale(
+    domain=["BENIGN", "MALICIOUS", "NO TRAFFIC"],
+    range=[COLOR_BENIGN, COLOR_MALICIOUS, COLOR_REFERENCE],
+)
+VERDICT_SHAPES = alt.Scale(
+    domain=["BENIGN", "MALICIOUS", "NO TRAFFIC"],
+    range=["circle", "triangle-up", "square"],
+)
+
+LIVE_INFO = (
+    "This live demonstration uses a trained machine-learning IDS model to "
+    "analyse network traffic generated within a controlled test environment. "
+    "The model was trained previously using 5G-NIDD data and is not retrained "
+    "during live monitoring."
+)
+
+
+@st.cache_resource
+def load_live_predictor(path):
+    # Re-use the model already cached for the Prediction Demo; LivePredictor
+    # checks feature names/order and class labels before it is used.
+    model = load_model(path) if path.exists() else None
+    return LivePredictor(path, model=model)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def cached_interfaces():
+    return list_interfaces()
+
+
+def live_monitor():
+    return st.session_state.get("live_monitor")
+
+
+def monitor_running():
+    monitor = live_monitor()
+    return monitor is not None and monitor.running
+
+
+def probability_chart(flows, windows):
+    points = alt.Chart(flows).mark_point(size=70, filled=True, opacity=0.85).encode(
+        x=alt.X("Time:T", title="Time"),
+        y=alt.Y("Malicious_Probability:Q", title="Malicious probability",
+                scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%")),
+        color=alt.Color("Prediction:N", scale=VERDICT_SCALE, title="Flow prediction"),
+        shape=alt.Shape("Prediction:N", scale=VERDICT_SHAPES, title="Flow prediction"),
+        tooltip=[
+            alt.Tooltip("Time:T", format="%H:%M:%S"), "Source:N", "Destination:N",
+            "Protocol:N", "Prediction:N",
+            alt.Tooltip("Malicious_Probability:Q", title="Malicious probability", format=".0%"),
+            alt.Tooltip("Packet_Count:Q", title="Packets"),
+            alt.Tooltip("Rate:Q", title="Rate (pkt/s)", format=".2f"),
+        ],
+    )
+    peak = alt.Chart(windows).mark_line(color=COLOR_REFERENCE, strokeWidth=2).encode(
+        x="Time:T",
+        y="Max_Malicious_Probability:Q",
+        tooltip=[alt.Tooltip("Time:T", format="%H:%M:%S"),
+                 alt.Tooltip("Max_Malicious_Probability:Q", title="Highest flow probability", format=".0%")],
+    )
+    threshold = alt.Chart(pd.DataFrame({"y": [0.5]})).mark_rule(
+        strokeDash=[5, 4], color="#52514e"
+    ).encode(y="y:Q")
+    return (threshold + peak + points).properties(height=290)
+
+
+def rate_chart(windows):
+    base = alt.Chart(windows).encode(
+        x=alt.X("Time:T", title="Time"),
+        y=alt.Y("Traffic_Rate:Q", title="Traffic rate (packets / second)"),
+    )
+    line = base.mark_line(color=COLOR_REFERENCE, strokeWidth=2)
+    dots = base.mark_point(size=80, filled=True).encode(
+        color=alt.Color("Verdict:N", scale=VERDICT_SCALE, title="Window verdict"),
+        shape=alt.Shape("Verdict:N", scale=VERDICT_SHAPES, title="Window verdict"),
+        tooltip=[
+            alt.Tooltip("Time:T", format="%H:%M:%S"), "Verdict:N",
+            alt.Tooltip("Traffic_Rate:Q", title="Rate (pkt/s)", format=".1f"),
+            alt.Tooltip("Packet_Count:Q", title="Packets"),
+            alt.Tooltip("Flows:Q", title="Flows"),
+            alt.Tooltip("Flagged_Flows:Q", title="Flagged flows"),
+        ],
+    )
+    return (line + dots).properties(height=290)
+
+
+def flow_table(rows):
+    table = pd.DataFrame(rows)
+    table["Prediction"] = table["Prediction"].map(
+        {"MALICIOUS": "🔴 MALICIOUS", "BENIGN": "🟢 BENIGN"}
+    )
+    table["Malicious_Probability"] = table["Malicious_Probability"] * 100
+    columns = ["Time", "Source", "Destination", "Protocol"] + FEATURES + [
+        "Prediction", "Malicious_Probability"
+    ]
+    return table[columns]
+
+
+FLOW_COLUMNS = {
+    "Time": st.column_config.DatetimeColumn("Time", format="HH:mm:ss"),
+    "Packet_Count": st.column_config.NumberColumn("Packet Count", format="%d"),
+    "Rate": st.column_config.NumberColumn("Rate (pkt/s)", format="%.2f"),
+    "Mean_Packet_Size": st.column_config.NumberColumn("Mean Packet Size (B)", format="%.1f"),
+    "TTL": st.column_config.NumberColumn("TTL", format="%d"),
+    "Malicious_Probability": st.column_config.ProgressColumn(
+        "Malicious Probability", min_value=0, max_value=100, format="%.2f%%"
+    ),
+}
+
+
+def render_live_page():
+
+    st.header("Live IDS Monitoring")
+    st.info(LIVE_INFO, icon="ℹ️")
+
+    if LIVE_IMPORT_ERROR is not None:
+        st.error(
+            f"The live IDS modules (src/live_*.py) could not be loaded: "
+            f"{LIVE_IMPORT_ERROR}. All other pages still work."
+        )
+        return
+
+    try:
+        predictor = load_live_predictor(LIGHTWEIGHT_MODEL)
+    except ModelCompatibilityError as error:
+        st.error(f"The live IDS needs the trained 10-tree Random Forest. {error}")
+        return
+
+    running = monitor_running()
+
+    # --------------------------------------------------------
+    # STATUS AND CONTROLS
+    # --------------------------------------------------------
+
+    status_html = (
+        '<span class="tag tag-live">🟢 Monitoring</span>' if running
+        else '<span class="tag tag-stop">⏸️ Stopped</span>'
+    )
+    if running and live_monitor().mode == "demo":
+        status_html += '<span class="tag tag-sim">SIMULATION — NOT REAL NETWORK TRAFFIC</span>'
+    st.markdown(f"**Status:** {status_html}", unsafe_allow_html=True)
+
+    mode = st.radio(
+        "Mode",
+        ["Live Capture Mode", "Demo Mode"],
+        horizontal=True,
+        disabled=running,
+        key="live_mode",
+        help="Live Capture analyses real packets from this laptop's network "
+             "interface. Demo Mode generates synthetic packets in memory.",
+    )
+
+    interface = host_filter = None
+    scenario = "auto"
+    capture_ready = True
+
+    col1, col2 = st.columns(2)
+
+    if mode == "Live Capture Mode":
+        available, capture_message = capture_status()
+        if not available:
+            capture_ready = False
+            st.warning(
+                f"**Live capture is not available.** {capture_message}  \n"
+                "You can still present the dashboard with **Demo Mode**."
+            )
+        else:
+            try:
+                interfaces = cached_interfaces()
+            except Exception as error:
+                interfaces = []
+                st.warning(f"Network interfaces could not be listed: {error}")
+            if not interfaces:
+                capture_ready = False
+                st.warning(
+                    "No capture interfaces were found. Check that Npcap is "
+                    "installed and the network adapter is enabled."
+                )
+            else:
+                labels = {item["label"]: item["name"] for item in interfaces}
+                with col1:
+                    chosen = st.selectbox(
+                        "Network interface", list(labels), disabled=running,
+                        key="live_interface",
+                        help="Choose the adapter the test traffic passes through: "
+                             "your Wi-Fi adapter, or the 'Wi-Fi Direct Virtual "
+                             "Adapter' when the phone joins this laptop's Mobile hotspot.",
+                    )
+                    interface = labels[chosen]
+                with col2:
+                    host_filter = st.text_input(
+                        "Only analyse traffic of this device IP (optional)",
+                        placeholder="e.g. 192.168.137.25 (your phone)",
+                        disabled=running, key="live_host",
+                        help="Adds a capture filter so only packets to/from this "
+                             "IP are analysed. Leave empty to analyse all IP traffic.",
+                    )
+    else:
+        st.warning(
+            "**SIMULATION — NOT REAL NETWORK TRAFFIC.** Demo Mode creates "
+            "synthetic packets in memory (nothing is sent on any network) and "
+            "feeds them through the same feature extraction and the same trained "
+            "model. Suspicious bursts imitate the statistics of 5G-NIDD attack "
+            "flows; the benign/malicious decision is made by the model.",
+            icon="🧪",
+        )
+        with col1:
+            scenario = st.selectbox(
+                "Simulated traffic", list(DEMO_SCENARIOS),
+                format_func=DEMO_SCENARIOS.get, disabled=running, key="live_scenario",
+            )
+
+    window_seconds = st.slider(
+        "Monitoring window (seconds)", min_value=1, max_value=30, value=5,
+        disabled=running, key="live_window",
+        help="Packets are grouped into flows per window. 5 s matches the Argus "
+             "status interval of the 5G-NIDD flow records the model was trained on.",
+    )
+
+    b1, b2, b3, _ = st.columns([1, 1, 1, 3])
+    start = b1.button("▶ Start Monitoring", type="primary", width="stretch",
+                      disabled=running or not capture_ready)
+    stop = b2.button("⏹ Stop Monitoring", width="stretch", disabled=not running)
+    clear = b3.button("🗑 Clear History", width="stretch", disabled=live_monitor() is None)
+
+    if start:
+        monitor = LiveMonitor(
+            predictor,
+            mode="capture" if mode == "Live Capture Mode" else "demo",
+            window_seconds=window_seconds,
+            interface=interface,
+            host_filter=host_filter,
+            demo_scenario=scenario,
+        )
+        try:
+            with st.spinner("Starting…"):
+                monitor.start()
+            st.session_state["live_monitor"] = monitor
+            st.rerun()
+        except CaptureError as error:
+            st.error(f"**Monitoring could not start.** {error}")
+
+    if stop and live_monitor() is not None:
+        live_monitor().stop()
+        st.rerun()
+
+    if clear and live_monitor() is not None:
+        live_monitor().clear_history()
+
+    # --------------------------------------------------------
+    # LIVE PANEL (refreshes itself without rerunning the page)
+    # --------------------------------------------------------
+
+    @st.fragment(run_every=1.0 if running else None)
+    def live_panel():
+        monitor = live_monitor()
+        if monitor is None:
+            st.info("Press **Start Monitoring** to begin. Results appear after the first window.")
+            return
+
+        state = monitor.snapshot()
+        if running and not state["running"]:
+            st.rerun()  # stopped by an error or the watchdog: refresh controls
+
+        if state["error"]:
+            st.error(state["error"])
+        if state["notice"]:
+            st.info(state["notice"])
+
+        source = (
+            "SIMULATION — synthetic packets" if state["mode"] == "demo"
+            else f"Interface {state['interface']}"
+            + (f", device {state['host_filter']}" if state["host_filter"] else "")
+        )
+        st.caption(
+            f"{source} · window {state['window_seconds']:.0f} s · "
+            f"{state['window_count']} windows analysed · "
+            f"{state['packets_seen']:,} IP packets · "
+            f"{state['non_ip_ignored']:,} non-IP frames ignored · "
+            f"{state['malformed']:,} malformed packets skipped"
+            + (f" · {state['dropped']:,} packets over the flow limit" if state["dropped"] else "")
+        )
+
+        windows = state["windows"]
+        if not windows:
+            st.info(f"Collecting the first {state['window_seconds']:.0f}-second window…")
+            return
+
+        if state["mode"] == "capture" and state["empty_windows_in_row"] >= 2:
+            st.warning(
+                "**No packets received** in the last "
+                f"{state['empty_windows_in_row']} windows. Check that the selected "
+                "interface carries the test traffic, that the device IP filter is "
+                "correct, and generate some traffic (e.g. open a web page on the phone)."
+            )
+
+        latest = windows[-1]
+
+        # ----------------------------------------------------
+        # CURRENT TRAFFIC
+        # ----------------------------------------------------
+
+        st.subheader("Current traffic")
+        st.caption(
+            f"Latest window ending {latest['Time']:%H:%M:%S}. Totals over all "
+            f"{latest['Flows']} flows; the model itself classifies each flow separately."
+        )
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Packet Count", f"{latest['Packet_Count']:,}")
+        m2.metric("Traffic Rate", f"{latest['Traffic_Rate']:.1f} pkt/s")
+        m3.metric("Mean Packet Size", f"{latest['Mean_Packet_Size']:.1f} B")
+        m4.metric("TTL (most common)", "–" if pd.isna(latest["TTL"]) else f"{latest['TTL']:.0f}")
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("TCP flows", latest["TCP"])
+        m2.metric("UDP flows", latest["UDP"])
+        m3.metric("ICMP flows", latest["ICMP"])
+        m4.metric("Flows in window", latest["Flows"])
+
+        # ----------------------------------------------------
+        # IDS RESULT
+        # ----------------------------------------------------
+
+        st.subheader("IDS result")
+        verdict = latest["Verdict"]
+        css = {"MALICIOUS": "verdict-malicious", "BENIGN": "verdict-benign"}.get(verdict, "verdict-none")
+        icon = {"MALICIOUS": "🚨", "BENIGN": "✅"}.get(verdict, "⏳")
+        detail = (
+            f"{latest['Flagged_Flows']} of {latest['Flows']} flows classified malicious"
+            if latest["Flows"] else "No IP packets in this window"
+        )
+        r1, r2 = st.columns([2, 1])
+        r1.markdown(
+            f'<div class="verdict {css}">{icon} Prediction: {verdict}'
+            f"<small>{detail}</small></div>",
+            unsafe_allow_html=True,
+        )
+        r2.metric(
+            "Malicious Probability",
+            f"{latest['Max_Malicious_Probability'] * 100:.2f}%",
+            help="Highest predict_proba (class 1) among the window's flows: the "
+                 "10 trees' average malicious-class share at the leaves reached. "
+                 "A model score, not a calibrated probability.",
+        )
+        if state["mode"] == "demo":
+            st.caption("🧪 SIMULATION — NOT REAL NETWORK TRAFFIC")
+
+        if state["latest_flows"]:
+            with st.expander("Flows in the latest window — exact model input", expanded=False):
+                st.dataframe(
+                    flow_table(state["latest_flows"]), column_config=FLOW_COLUMNS,
+                    width="stretch", hide_index=True, height=260,
+                )
+
+        # ----------------------------------------------------
+        # LIVE GRAPHS
+        # ----------------------------------------------------
+
+        st.subheader("Live graphs")
+        window_df = pd.DataFrame(windows)
+        flow_df = pd.DataFrame(state["flows"])
+
+        g1, g2 = st.columns(2)
+        with g1:
+            st.markdown("**Malicious probability over time**")
+            if not flow_df.empty:
+                st.altair_chart(probability_chart(flow_df, window_df), width="stretch")
+                st.caption("One marker per flow (▲ malicious, ● benign); grey line = "
+                           "highest flow probability per window; dashed line = 0.5 decision threshold.")
+            else:
+                st.caption("No flows observed yet.")
+        with g2:
+            st.markdown("**Traffic rate over time**")
+            st.altair_chart(rate_chart(window_df), width="stretch")
+            st.caption("Packets per second in each window, marked by the window's verdict.")
+
+        # ----------------------------------------------------
+        # HISTORY
+        # ----------------------------------------------------
+
+        st.subheader("Live traffic history")
+        if flow_df.empty:
+            st.caption("No flows observed yet.")
+        else:
+            st.caption(
+                f"Most recent {len(flow_df)} flow observations (newest first, "
+                "rolling history; packets themselves are not stored)."
+            )
+            st.dataframe(
+                flow_table(state["flows"]), column_config=FLOW_COLUMNS,
+                width="stretch", hide_index=True, height=360,
+            )
+
+    live_panel()
+
+    # --------------------------------------------------------
+    # EXPLANATIONS
+    # --------------------------------------------------------
+
+    st.divider()
+
+    with st.expander("How the live pipeline works and how the 7 features are computed"):
+        st.markdown(
+            "**Packets → flows → 7 features → existing model → prediction.** "
+            "5G-NIDD records are Argus bidirectional flow records (a status record "
+            "every ~5 s), so live packets are grouped the same way: one flow "
+            "(protocol + the two endpoints, both directions) in one window = one "
+            "record = one prediction."
+        )
+        st.dataframe(
+            pd.DataFrame([
+                ("Rate", "Argus Rate", "(packets − 1) / (last − first packet time); 0 for a single packet"),
+                ("Packet_Count", "TotPkts", "packets of the flow in the window (both directions)"),
+                ("Mean_Packet_Size", "TotBytes / TotPkts", "mean frame size = IP length + 14-byte Ethernet header"),
+                ("TTL", "sTtl", "IP TTL (IPv6 hop limit) of the flow originator's packets"),
+                ("TCP / UDP / ICMP", "one-hot of Proto", "1 for the flow's protocol, all 0 for other IP protocols"),
+            ], columns=["Feature", "5G-NIDD source (training)", "Live computation"]),
+            width="stretch", hide_index=True,
+        )
+        info = predictor.describe()
+        st.caption(
+            f"Model: {info['file']} ({info['type']}, {info['trees']} trees) · "
+            f"verified feature order {info['features']} · classes {info['classes']} "
+            "(0 = benign, 1 = malicious). The model is loaded read-only and never retrained."
+        )
+
+    with st.expander("📱 Controlled demonstration with an Android phone"):
+        st.markdown(
+            "The phone simply **generates normal network traffic** inside your own "
+            "test network; the laptop captures it passively.\n\n"
+            "```\nAndroid phone → Wi-Fi / hotspot → Windows laptop → packet capture "
+            "→ feature extraction → trained IDS model → this dashboard\n```\n"
+            "1. On the laptop: **Settings → Network & internet → Mobile hotspot → On**.\n"
+            "2. Connect the phone to that hotspot. Its address appears in the hotspot "
+            "page (usually `192.168.137.x`).\n"
+            "3. Above, choose **Live Capture Mode** and the **Microsoft Wi-Fi Direct "
+            "Virtual Adapter** interface whose IP is `192.168.137.1` "
+            "(if not listed yet, reload the page after turning the hotspot on).\n"
+            "4. Optionally enter the phone's IP so only its traffic is analysed.\n"
+            "5. Press **Start Monitoring**, then use the phone normally: browse, "
+            "stream a video, or open this dashboard on the phone at "
+            "`http://192.168.137.1:8501`.\n\n"
+            "Only use devices and networks you own or control."
+        )
+
+    st.caption(
+        "Limitation: this model was validated only on 5G-NIDD and degraded sharply on "
+        "CICIoT2023 (cross-domain F1 ≈ 2%). Predictions on home Wi-Fi or phone traffic "
+        "are therefore cross-domain too and should be read as a pipeline demonstration, "
+        "not as a reliable security verdict."
+    )
+
+
+if page == "Live IDS Monitoring":
+    render_live_page()
+
+
+# ============================================================
+# LIVE MONITOR STATUS (sidebar, every page)
+# ============================================================
+
+# While monitoring runs, a small sidebar panel keeps the background monitor
+# alive and shows its status on every page. When the browser is closed it
+# stops being polled and the monitor stops itself after a few minutes.
+if LIVE_IMPORT_ERROR is None and monitor_running():
+
+    @st.fragment(run_every=2.0)
+    def live_sidebar_status():
+        state = live_monitor().snapshot()
+        if not state["running"]:
+            st.caption("⏸️ Live IDS stopped")
+            return
+        last = state["windows"][-1]["Verdict"] if state["windows"] else "waiting…"
+        icon = {"MALICIOUS": "🚨", "BENIGN": "✅"}.get(last, "⏳")
+        label = "Demo (simulation)" if state["mode"] == "demo" else "Live capture"
+        st.markdown(f"**🟢 Live IDS — {label}**  \n{icon} Last window: {last}")
+
+    with st.sidebar:
+        st.divider()
+        live_sidebar_status()
 
 
 # ============================================================

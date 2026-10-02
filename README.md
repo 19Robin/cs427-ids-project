@@ -104,11 +104,127 @@ Model files (`models/*.joblib`) are git-ignored because of their size, so the
 Prediction Demo only works after running the training scripts locally. All
 other dashboard pages read only the files in `results/`.
 
+## Live IDS monitoring (proof-of-concept)
+
+The **Live IDS Monitoring** page applies the existing 10-tree Random Forest
+(`models/random_forest_10_trees.joblib`) to live traffic:
+
+```
+live packets -> flows per time window -> same 7 features -> existing model -> BENIGN / MALICIOUS -> dashboard
+```
+
+**The model is only loaded and used for `predict()` / `predict_proba()`; it
+is never retrained.** On load, `src/live_predictor.py` checks that the model's
+`feature_names_in_` equals the live feature order and that `classes_` is
+`[0, 1]` (0 = benign, 1 = malicious, as set in `preprocess_data.py`). The
+malicious probability is the class-1 column of `predict_proba` — a model
+score (the trees' average leaf class share), not a calibrated probability.
+
+### How the seven features are extracted
+
+5G-NIDD records are Argus *bidirectional flow records*, emitted every ~5 s for
+active flows. The live extractor (`src/live_features.py`) reproduces them: one
+flow (protocol + the two endpoints, both directions) inside one window is one
+record and one prediction. The formulas were checked against the raw
+5G-NIDD file:
+
+| Feature | 5G-NIDD (training) | Live computation |
+|---|---|---|
+| Rate | Argus `Rate` (verified = `(TotPkts−1)/Dur` on 100% of rows) | `(packets − 1) / (last − first packet time)`, 0 for one packet |
+| Packet_Count | `TotPkts` | packets of the flow in the window |
+| Mean_Packet_Size | `TotBytes / TotPkts` (bytes include the 14-byte Ethernet header) | mean of IP length + 14 |
+| TTL | `sTtl` (source TTL) | TTL / IPv6 hop limit of the flow originator's packets |
+| TCP / UDP / ICMP | one-hot of `Proto` (ICMPv6 counts as ICMP) | identical one-hot; all 0 for other IP protocols |
+
+The default 5-second window matches the Argus status interval. Non-IP frames
+are ignored (5G-NIDD rows without a TTL were dropped in preprocessing).
+Only a rolling history (last 500 flows / 240 windows) is kept; packets are
+never stored.
+
+### Installation (Windows 11)
+
+1. `pip install -r requirements.txt` (adds `scapy` and `altair`).
+2. For Live Capture Mode install **Npcap** from https://npcap.com/#download
+   and tick *"Install Npcap in WinPcap API-compatible Mode"*. If you tick
+   *"Restrict Npcap driver's access to Administrators only"*, start the
+   terminal with **Run as administrator** before `streamlit run app.py`.
+   Demo Mode needs neither Npcap nor admin rights.
+
+### Find the network interface
+
+```bash
+python -m src.live_capture --list-interfaces
+```
+
+Use the adapter that carries the test traffic: usually `WiFi`, or the
+*Microsoft Wi-Fi Direct Virtual Adapter* (IP `192.168.137.1`) when the phone
+is connected to the laptop's Mobile hotspot. A quick command-line check
+without Streamlit:
+
+```bash
+python -m src.live_capture --test-capture "WiFi" --seconds 15
+python -m src.live_capture --test-demo --seconds 15
+```
+
+### Run and use
+
+```bash
+streamlit run app.py
+```
+
+Open **Live IDS Monitoring** in the sidebar.
+
+- **Live Capture Mode:** choose the interface, optionally enter one device IP
+  (only its traffic is analysed), choose the window length, press
+  **Start Monitoring**. Capture is passive; nothing is transmitted.
+- **Demo Mode:** labelled *SIMULATION — NOT REAL NETWORK TRAFFIC*. Synthetic
+  packets are created in memory (never sent) and pass through the same
+  feature extraction and model. "Auto" shows normal traffic with a simulated
+  suspicious burst every 10 windows; the burst profiles imitate 5G-NIDD attack
+  flow statistics, and the model makes the decision.
+- **Stop Monitoring** stops capture; **Clear History** empties the tables and
+  graphs. While monitoring runs, a status line appears in the sidebar on
+  every page.
+
+### Controlled demonstration with an Android phone
+
+The phone only generates **normal traffic** inside your own test network.
+
+1. Laptop: *Settings → Network & internet → Mobile hotspot → On*.
+2. Connect the phone to the hotspot; note its IP (usually `192.168.137.x`).
+3. Select the Wi-Fi Direct Virtual Adapter (`192.168.137.1`) and optionally
+   enter the phone's IP.
+4. Start monitoring and use the phone normally: browse, stream video, or
+   open the dashboard on the phone at `http://192.168.137.1:8501`.
+
+On a shared Wi-Fi network (no hotspot) the laptop only sees its own traffic
+and traffic addressed to it, so use the hotspot for phone traffic. Only use
+devices and networks you own or control.
+
+### Limitations of the live proof-of-concept
+
+- **Cross-domain:** the model was validated only on 5G-NIDD and dropped to
+  ~2% F1 on CICIoT2023. Home Wi-Fi / phone traffic is another domain, so
+  live verdicts demonstrate the pipeline, not reliable detection. Many 5G-NIDD
+  attack flows have testbed-specific values (e.g. TTL 63) that ordinary
+  laptops (TTL 64/128) rarely produce, while some benign live flows can still
+  be flagged.
+- Flows are approximated per window from packets; Argus' exact flow timeout
+  and state logic is not reproduced, and flows split across window edges.
+- Outgoing packets captured on Windows may be larger than the MTU because of
+  NIC segmentation offload, which inflates Mean_Packet_Size.
+- Scapy dissects packets in Python: suitable for a laptop demo (hundreds to a
+  few thousand packets per second), not for high-speed links. At most 5,000
+  flows per window are analysed.
+- Monitoring state belongs to one browser session; if the browser is closed,
+  the monitor stops itself after about 3 minutes.
+
 ## Repository layout
 
 ```
 app.py                     Streamlit dashboard
 src/                       preprocessing, training and evaluation scripts (above)
+src/live_*.py              live IDS: capture, feature extraction, prediction
 results/                   all result files used by the dashboard
 models/                    trained models (git-ignored)
 data/raw, data/processed   datasets (git-ignored)
@@ -127,4 +243,4 @@ Legacy files from an earlier UNSW-NB15 prototype (`src/data_loader.py`,
 - Logistic Regression is trained on unscaled features.
 - The common features are coarse and not identically defined across datasets.
 - CICIoT2023 contains many attack types that do not exist in 5G-NIDD.
-- Not a production IDS.
+- Not a production IDS (this includes the live monitoring proof-of-concept).
