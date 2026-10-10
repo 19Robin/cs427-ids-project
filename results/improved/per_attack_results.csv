@@ -1,0 +1,216 @@
+Model,Test_Set,Attack_Type,Samples,Predicted_Malicious,Predicted_Malicious_Rate
+Random Forest (10 trees),5G-NIDD test (in-domain),Benign,11884,1446,0.12167620329855268
+Random Forest (10 trees),5G-NIDD test (in-domain),HTTPFlood,11610,11605,0.9995693367786391
+Random Forest (10 trees),5G-NIDD test (in-domain),ICMPFlood,108,108,1.0
+Random Forest (10 trees),5G-NIDD test (in-domain),SYNFlood,613,613,1.0
+Random Forest (10 trees),5G-NIDD test (in-domain),SYNScan,26,26,1.0
+Random Forest (10 trees),5G-NIDD test (in-domain),SlowrateDoS,13427,13426,0.9999255231995233
+Random Forest (10 trees),5G-NIDD test (in-domain),TCPConnectScan,38,37,0.9736842105263158
+Random Forest (10 trees),5G-NIDD test (in-domain),UDPFlood,4429,2466,0.5567848272747798
+Random Forest (10 trees),5G-NIDD test (in-domain),UDPScan,58,58,1.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),BACKDOOR_MALWARE,233,2,0.008583690987124463
+Random Forest (10 trees),CICIoT2023 (cross-domain),BENIGN,83486,2611,0.03127470474091464
+Random Forest (10 trees),CICIoT2023 (cross-domain),BROWSERHIJACKING,417,8,0.019184652278177457
+Random Forest (10 trees),CICIoT2023 (cross-domain),COMMANDINJECTION,391,16,0.04092071611253197
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-ACK_FRAGMENTATION,21816,0,0.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-HTTP_FLOOD,2220,6,0.002702702702702703
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-ICMP_FLOOD,125940,0,0.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-ICMP_FRAGMENTATION,34369,0,0.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-PSHACK_FLOOD,62731,1177,0.018762653233648435
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-RSTFINFLOOD,52293,1261,0.024114126173675254
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-SLOWLORIS,1757,4,0.0022766078542970974
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-SYNONYMOUSIP_FLOOD,48311,1290,0.026701993334851275
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-SYN_FLOOD,84309,2289,0.027150126321033342
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-TCP_FLOOD,80397,2084,0.02592136522507059
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-UDP_FLOOD,126336,2,1.583080040526849e-05
+Random Forest (10 trees),CICIoT2023 (cross-domain),DDOS-UDP_FRAGMENTATION,21757,0,0.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),DICTIONARYBRUTEFORCE,1005,38,0.03781094527363184
+Random Forest (10 trees),CICIoT2023 (cross-domain),DNS_SPOOFING,13281,287,0.02160981853776071
+Random Forest (10 trees),CICIoT2023 (cross-domain),DOS-HTTP_FLOOD,5356,51,0.009522031366691561
+Random Forest (10 trees),CICIoT2023 (cross-domain),DOS-SYN_FLOOD,50579,1082,0.021392277427390815
+Random Forest (10 trees),CICIoT2023 (cross-domain),DOS-TCP_FLOOD,58333,1147,0.019662969502682873
+Random Forest (10 trees),CICIoT2023 (cross-domain),DOS-UDP_FLOOD,137964,0,0.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),MIRAI-GREETH_FLOOD,64955,0,0.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),MIRAI-GREIP_FLOOD,52195,0,0.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),MIRAI-UDPPLAIN,57435,0,0.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),MITM-ARPSPOOFING,21404,1858,0.08680620444776677
+Random Forest (10 trees),CICIoT2023 (cross-domain),RECON-HOSTDISCOVERY,10214,60,0.005874290189935382
+Random Forest (10 trees),CICIoT2023 (cross-domain),RECON-OSSCAN,7167,234,0.03264964420259523
+Random Forest (10 trees),CICIoT2023 (cross-domain),RECON-PINGSWEEP,183,7,0.03825136612021858
+Random Forest (10 trees),CICIoT2023 (cross-domain),RECON-PORTSCAN,6067,150,0.024723916268336903
+Random Forest (10 trees),CICIoT2023 (cross-domain),SQLINJECTION,405,7,0.01728395061728395
+Random Forest (10 trees),CICIoT2023 (cross-domain),UPLOADING_ATTACK,112,0,0.0
+Random Forest (10 trees),CICIoT2023 (cross-domain),VULNERABILITYSCAN,28328,609,0.021498164360350184
+Random Forest (10 trees),CICIoT2023 (cross-domain),XSS,326,7,0.02147239263803681
+"Random Forest (10 trees, depth ≤ 12)",5G-NIDD test (in-domain),Benign,11884,9,0.0007573207674183777
+"Random Forest (10 trees, depth ≤ 12)",5G-NIDD test (in-domain),HTTPFlood,11610,11608,0.9998277347114557
+"Random Forest (10 trees, depth ≤ 12)",5G-NIDD test (in-domain),ICMPFlood,108,108,1.0
+"Random Forest (10 trees, depth ≤ 12)",5G-NIDD test (in-domain),SYNFlood,613,613,1.0
+"Random Forest (10 trees, depth ≤ 12)",5G-NIDD test (in-domain),SYNScan,26,26,1.0
+"Random Forest (10 trees, depth ≤ 12)",5G-NIDD test (in-domain),SlowrateDoS,13427,13427,1.0
+"Random Forest (10 trees, depth ≤ 12)",5G-NIDD test (in-domain),TCPConnectScan,38,37,0.9736842105263158
+"Random Forest (10 trees, depth ≤ 12)",5G-NIDD test (in-domain),UDPFlood,4429,2413,0.5448182433958004
+"Random Forest (10 trees, depth ≤ 12)",5G-NIDD test (in-domain),UDPScan,58,58,1.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),BACKDOOR_MALWARE,233,1,0.004291845493562232
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),BENIGN,83486,2733,0.032736027597441486
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),BROWSERHIJACKING,417,8,0.019184652278177457
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),COMMANDINJECTION,391,17,0.043478260869565216
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-ACK_FRAGMENTATION,21816,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-HTTP_FLOOD,2220,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-ICMP_FLOOD,125940,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-ICMP_FRAGMENTATION,34369,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-PSHACK_FLOOD,62731,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-RSTFINFLOOD,52293,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-SLOWLORIS,1757,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-SYNONYMOUSIP_FLOOD,48311,1,2.0699219639419594e-05
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-SYN_FLOOD,84309,1,1.1861129891233439e-05
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-TCP_FLOOD,80397,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-UDP_FLOOD,126336,1,7.915400202634246e-06
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DDOS-UDP_FRAGMENTATION,21757,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DICTIONARYBRUTEFORCE,1005,44,0.04378109452736319
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DNS_SPOOFING,13281,406,0.030569987199759053
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DOS-HTTP_FLOOD,5356,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DOS-SYN_FLOOD,50579,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DOS-TCP_FLOOD,58333,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),DOS-UDP_FLOOD,137964,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),MIRAI-GREETH_FLOOD,64955,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),MIRAI-GREIP_FLOOD,52195,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),MIRAI-UDPPLAIN,57435,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),MITM-ARPSPOOFING,21404,1883,0.08797421042795739
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),RECON-HOSTDISCOVERY,10214,193,0.018895633444292147
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),RECON-OSSCAN,7167,384,0.05357890330682294
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),RECON-PINGSWEEP,183,9,0.04918032786885246
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),RECON-PORTSCAN,6067,283,0.04664578869292896
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),SQLINJECTION,405,12,0.02962962962962963
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),UPLOADING_ATTACK,112,0,0.0
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),VULNERABILITYSCAN,28328,890,0.03141767862185823
+"Random Forest (10 trees, depth ≤ 12)",CICIoT2023 (cross-domain),XSS,326,7,0.02147239263803681
+Decision Tree,5G-NIDD test (in-domain),Benign,11884,1786,0.15028609895658027
+Decision Tree,5G-NIDD test (in-domain),HTTPFlood,11610,11607,0.9997416020671834
+Decision Tree,5G-NIDD test (in-domain),ICMPFlood,108,108,1.0
+Decision Tree,5G-NIDD test (in-domain),SYNFlood,613,613,1.0
+Decision Tree,5G-NIDD test (in-domain),SYNScan,26,26,1.0
+Decision Tree,5G-NIDD test (in-domain),SlowrateDoS,13427,13425,0.9998510463990467
+Decision Tree,5G-NIDD test (in-domain),TCPConnectScan,38,37,0.9736842105263158
+Decision Tree,5G-NIDD test (in-domain),UDPFlood,4429,2480,0.5599458116956424
+Decision Tree,5G-NIDD test (in-domain),UDPScan,58,58,1.0
+Decision Tree,CICIoT2023 (cross-domain),BACKDOOR_MALWARE,233,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),BENIGN,83486,1402,0.016793234793857654
+Decision Tree,CICIoT2023 (cross-domain),BROWSERHIJACKING,417,3,0.007194244604316547
+Decision Tree,CICIoT2023 (cross-domain),COMMANDINJECTION,391,3,0.0076726342710997444
+Decision Tree,CICIoT2023 (cross-domain),DDOS-ACK_FRAGMENTATION,21816,3,0.0001375137513751375
+Decision Tree,CICIoT2023 (cross-domain),DDOS-HTTP_FLOOD,2220,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DDOS-ICMP_FLOOD,125940,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DDOS-ICMP_FRAGMENTATION,34369,2,5.819197532660246e-05
+Decision Tree,CICIoT2023 (cross-domain),DDOS-PSHACK_FLOOD,62731,1,1.5941081761808355e-05
+Decision Tree,CICIoT2023 (cross-domain),DDOS-RSTFINFLOOD,52293,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DDOS-SLOWLORIS,1757,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DDOS-SYNONYMOUSIP_FLOOD,48311,1,2.0699219639419594e-05
+Decision Tree,CICIoT2023 (cross-domain),DDOS-SYN_FLOOD,84309,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DDOS-TCP_FLOOD,80397,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DDOS-UDP_FLOOD,126336,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DDOS-UDP_FRAGMENTATION,21757,1,4.596221905593602e-05
+Decision Tree,CICIoT2023 (cross-domain),DICTIONARYBRUTEFORCE,1005,11,0.010945273631840797
+Decision Tree,CICIoT2023 (cross-domain),DNS_SPOOFING,13281,261,0.019652134628416536
+Decision Tree,CICIoT2023 (cross-domain),DOS-HTTP_FLOOD,5356,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DOS-SYN_FLOOD,50579,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DOS-TCP_FLOOD,58333,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),DOS-UDP_FLOOD,137964,1,7.248267664028297e-06
+Decision Tree,CICIoT2023 (cross-domain),MIRAI-GREETH_FLOOD,64955,2,3.0790547301978296e-05
+Decision Tree,CICIoT2023 (cross-domain),MIRAI-GREIP_FLOOD,52195,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),MIRAI-UDPPLAIN,57435,0,0.0
+Decision Tree,CICIoT2023 (cross-domain),MITM-ARPSPOOFING,21404,499,0.023313399364604748
+Decision Tree,CICIoT2023 (cross-domain),RECON-HOSTDISCOVERY,10214,35,0.003426669277462307
+Decision Tree,CICIoT2023 (cross-domain),RECON-OSSCAN,7167,112,0.01562718013115669
+Decision Tree,CICIoT2023 (cross-domain),RECON-PINGSWEEP,183,3,0.01639344262295082
+Decision Tree,CICIoT2023 (cross-domain),RECON-PORTSCAN,6067,70,0.011537827591890556
+Decision Tree,CICIoT2023 (cross-domain),SQLINJECTION,405,8,0.019753086419753086
+Decision Tree,CICIoT2023 (cross-domain),UPLOADING_ATTACK,112,1,0.008928571428571428
+Decision Tree,CICIoT2023 (cross-domain),VULNERABILITYSCAN,28328,417,0.014720417961027958
+Decision Tree,CICIoT2023 (cross-domain),XSS,326,1,0.003067484662576687
+Logistic Regression (scaled),5G-NIDD test (in-domain),Benign,11884,1304,0.10972736452372939
+Logistic Regression (scaled),5G-NIDD test (in-domain),HTTPFlood,11610,11609,0.9999138673557278
+Logistic Regression (scaled),5G-NIDD test (in-domain),ICMPFlood,108,0,0.0
+Logistic Regression (scaled),5G-NIDD test (in-domain),SYNFlood,613,612,0.99836867862969
+Logistic Regression (scaled),5G-NIDD test (in-domain),SYNScan,26,25,0.9615384615384616
+Logistic Regression (scaled),5G-NIDD test (in-domain),SlowrateDoS,13427,13427,1.0
+Logistic Regression (scaled),5G-NIDD test (in-domain),TCPConnectScan,38,34,0.8947368421052632
+Logistic Regression (scaled),5G-NIDD test (in-domain),UDPFlood,4429,0,0.0
+Logistic Regression (scaled),5G-NIDD test (in-domain),UDPScan,58,46,0.7931034482758621
+Logistic Regression (scaled),CICIoT2023 (cross-domain),BACKDOOR_MALWARE,233,49,0.21030042918454936
+Logistic Regression (scaled),CICIoT2023 (cross-domain),BENIGN,83486,23916,0.28646719210406535
+Logistic Regression (scaled),CICIoT2023 (cross-domain),BROWSERHIJACKING,417,133,0.31894484412470026
+Logistic Regression (scaled),CICIoT2023 (cross-domain),COMMANDINJECTION,391,141,0.36061381074168797
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-ACK_FRAGMENTATION,21816,50,0.0022918958562522917
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-HTTP_FLOOD,2220,1,0.00045045045045045046
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-ICMP_FLOOD,125940,0,0.0
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-ICMP_FRAGMENTATION,34369,2,5.819197532660246e-05
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-PSHACK_FLOOD,62731,74,0.0011796400503738184
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-RSTFINFLOOD,52293,84,0.0016063335436865354
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-SLOWLORIS,1757,0,0.0
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-SYNONYMOUSIP_FLOOD,48311,62,0.0012833516176440148
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-SYN_FLOOD,84309,78,0.0009251681315162083
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-TCP_FLOOD,80397,87,0.001082129930221277
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-UDP_FLOOD,126336,1,7.915400202634246e-06
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DDOS-UDP_FRAGMENTATION,21757,5,0.0002298110952796801
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DICTIONARYBRUTEFORCE,1005,343,0.34129353233830845
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DNS_SPOOFING,13281,3172,0.23883743693998946
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DOS-HTTP_FLOOD,5356,12,0.0022404779686333084
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DOS-SYN_FLOOD,50579,31,0.0006129025880306056
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DOS-TCP_FLOOD,58333,39,0.0006685752490014229
+Logistic Regression (scaled),CICIoT2023 (cross-domain),DOS-UDP_FLOOD,137964,3,2.174480299208489e-05
+Logistic Regression (scaled),CICIoT2023 (cross-domain),MIRAI-GREETH_FLOOD,64955,42,0.0006466014933415442
+Logistic Regression (scaled),CICIoT2023 (cross-domain),MIRAI-GREIP_FLOOD,52195,38,0.0007280390842034678
+Logistic Regression (scaled),CICIoT2023 (cross-domain),MIRAI-UDPPLAIN,57435,0,0.0
+Logistic Regression (scaled),CICIoT2023 (cross-domain),MITM-ARPSPOOFING,21404,7241,0.33830125210241074
+Logistic Regression (scaled),CICIoT2023 (cross-domain),RECON-HOSTDISCOVERY,10214,2917,0.2855884080673585
+Logistic Regression (scaled),CICIoT2023 (cross-domain),RECON-OSSCAN,7167,3181,0.44383982140365563
+Logistic Regression (scaled),CICIoT2023 (cross-domain),RECON-PINGSWEEP,183,91,0.4972677595628415
+Logistic Regression (scaled),CICIoT2023 (cross-domain),RECON-PORTSCAN,6067,2820,0.4648096258447338
+Logistic Regression (scaled),CICIoT2023 (cross-domain),SQLINJECTION,405,131,0.3234567901234568
+Logistic Regression (scaled),CICIoT2023 (cross-domain),UPLOADING_ATTACK,112,14,0.125
+Logistic Regression (scaled),CICIoT2023 (cross-domain),VULNERABILITYSCAN,28328,8342,0.2944789607455521
+Logistic Regression (scaled),CICIoT2023 (cross-domain),XSS,326,53,0.16257668711656442
+XGBoost,5G-NIDD test (in-domain),Benign,11884,11,0.0009256142712891283
+XGBoost,5G-NIDD test (in-domain),HTTPFlood,11610,11608,0.9998277347114557
+XGBoost,5G-NIDD test (in-domain),ICMPFlood,108,108,1.0
+XGBoost,5G-NIDD test (in-domain),SYNFlood,613,613,1.0
+XGBoost,5G-NIDD test (in-domain),SYNScan,26,26,1.0
+XGBoost,5G-NIDD test (in-domain),SlowrateDoS,13427,13427,1.0
+XGBoost,5G-NIDD test (in-domain),TCPConnectScan,38,37,0.9736842105263158
+XGBoost,5G-NIDD test (in-domain),UDPFlood,4429,2413,0.5448182433958004
+XGBoost,5G-NIDD test (in-domain),UDPScan,58,56,0.9655172413793104
+XGBoost,CICIoT2023 (cross-domain),BACKDOOR_MALWARE,233,2,0.008583690987124463
+XGBoost,CICIoT2023 (cross-domain),BENIGN,83486,3122,0.03739549145964593
+XGBoost,CICIoT2023 (cross-domain),BROWSERHIJACKING,417,8,0.019184652278177457
+XGBoost,CICIoT2023 (cross-domain),COMMANDINJECTION,391,2,0.005115089514066497
+XGBoost,CICIoT2023 (cross-domain),DDOS-ACK_FRAGMENTATION,21816,4,0.00018335166850018335
+XGBoost,CICIoT2023 (cross-domain),DDOS-HTTP_FLOOD,2220,0,0.0
+XGBoost,CICIoT2023 (cross-domain),DDOS-ICMP_FLOOD,125940,1,7.940289026520565e-06
+XGBoost,CICIoT2023 (cross-domain),DDOS-ICMP_FRAGMENTATION,34369,7,0.00020367191364310862
+XGBoost,CICIoT2023 (cross-domain),DDOS-PSHACK_FLOOD,62731,0,0.0
+XGBoost,CICIoT2023 (cross-domain),DDOS-RSTFINFLOOD,52293,0,0.0
+XGBoost,CICIoT2023 (cross-domain),DDOS-SLOWLORIS,1757,0,0.0
+XGBoost,CICIoT2023 (cross-domain),DDOS-SYNONYMOUSIP_FLOOD,48311,2,4.139843927883919e-05
+XGBoost,CICIoT2023 (cross-domain),DDOS-SYN_FLOOD,84309,0,0.0
+XGBoost,CICIoT2023 (cross-domain),DDOS-TCP_FLOOD,80397,0,0.0
+XGBoost,CICIoT2023 (cross-domain),DDOS-UDP_FLOOD,126336,1,7.915400202634246e-06
+XGBoost,CICIoT2023 (cross-domain),DDOS-UDP_FRAGMENTATION,21757,0,0.0
+XGBoost,CICIoT2023 (cross-domain),DICTIONARYBRUTEFORCE,1005,20,0.01990049751243781
+XGBoost,CICIoT2023 (cross-domain),DNS_SPOOFING,13281,302,0.02273925156238235
+XGBoost,CICIoT2023 (cross-domain),DOS-HTTP_FLOOD,5356,0,0.0
+XGBoost,CICIoT2023 (cross-domain),DOS-SYN_FLOOD,50579,0,0.0
+XGBoost,CICIoT2023 (cross-domain),DOS-TCP_FLOOD,58333,1,1.7142955102600588e-05
+XGBoost,CICIoT2023 (cross-domain),DOS-UDP_FLOOD,137964,1,7.248267664028297e-06
+XGBoost,CICIoT2023 (cross-domain),MIRAI-GREETH_FLOOD,64955,2,3.0790547301978296e-05
+XGBoost,CICIoT2023 (cross-domain),MIRAI-GREIP_FLOOD,52195,2,3.831784653702462e-05
+XGBoost,CICIoT2023 (cross-domain),MIRAI-UDPPLAIN,57435,1,1.741098633237573e-05
+XGBoost,CICIoT2023 (cross-domain),MITM-ARPSPOOFING,21404,525,0.02452812558400299
+XGBoost,CICIoT2023 (cross-domain),RECON-HOSTDISCOVERY,10214,26,0.0025455257489719993
+XGBoost,CICIoT2023 (cross-domain),RECON-OSSCAN,7167,153,0.021347844286312263
+XGBoost,CICIoT2023 (cross-domain),RECON-PINGSWEEP,183,3,0.01639344262295082
+XGBoost,CICIoT2023 (cross-domain),RECON-PORTSCAN,6067,74,0.012197132025712872
+XGBoost,CICIoT2023 (cross-domain),SQLINJECTION,405,4,0.009876543209876543
+XGBoost,CICIoT2023 (cross-domain),UPLOADING_ATTACK,112,2,0.017857142857142856
+XGBoost,CICIoT2023 (cross-domain),VULNERABILITYSCAN,28328,316,0.011155040948884497
+XGBoost,CICIoT2023 (cross-domain),XSS,326,1,0.003067484662576687

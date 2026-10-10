@@ -1,0 +1,20 @@
+{
+    "original_split_test_rows": 243136,
+    "original_split_test_rows_seen_in_train": 207874,
+    "original_split_test_overlap_share": 0.8549700579099763,
+    "5g_nidd_rows_with_conflicting_labels": 653594,
+    "5g_nidd_conflicting_label_share": 0.5376383181044949,
+    "ciciot2023_rows_with_conflicting_labels": 2378,
+    "ciciot2023_conflicting_label_share": 0.0006643333981463478,
+    "5g_nidd_rows_before_dedup": 1215676,
+    "ciciot2023_rows_before_dedup": 3579528,
+    "5g_nidd_rows_after_dedup": 210961,
+    "5g_nidd_malicious_share_after_dedup": 0.7183460450035789,
+    "ciciot2023_rows_after_dedup": 1262072,
+    "ciciot2023_malicious_share_after_dedup": 0.9338500497594432,
+    "train_rows": 168768,
+    "test_rows": 42193,
+    "experiment_d_cic_training_rows": 12620,
+    "experiment_d_cic_test_rows": 1249452,
+    "edge_model": "Random Forest (10 trees, depth \u2264 12)"
+}
