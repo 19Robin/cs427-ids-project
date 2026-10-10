@@ -102,6 +102,21 @@ fiveg_processed["Target"] = (
     .astype(int)
 )
 
+# Attack type (kept for per-attack analysis only, never used as a feature).
+# 5G-NIDD stores it in the "Attack Type" column; benign rows are "Benign".
+attack_column = next(
+    (c for c in ["Attack Type", "Attack_Type", "attack_type"] if c in fiveg.columns),
+    None
+)
+
+if attack_column is not None:
+    fiveg_processed["Attack_Type"] = (
+        fiveg[attack_column].astype(str).str.strip()
+    )
+else:
+    print("\nWARNING: no attack-type column found in 5G-NIDD; "
+          "per-attack analysis will be skipped.")
+
 
 # ------------------------------------------------------------
 # Remove invalid values
@@ -232,6 +247,9 @@ for file in cic_files:
         .ne("BENIGN")
         .astype(int)
     )
+
+    # Original CICIoT2023 label (per-attack analysis only, never a feature)
+    processed["Attack_Type"] = df["Label"].astype(str).str.strip()
 
     processed = processed.replace(
         [np.inf, -np.inf],

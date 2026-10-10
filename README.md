@@ -96,6 +96,8 @@ python src/test_other_models.py             # Decision Tree, Logistic Regression
 python src/test_attack_types.py             # per-attack-type detection (100-tree baseline)
 python src/analyse_feature_shift.py         # feature / protocol distribution shift
 python src/extract_demo_samples.py          # real 5G-NIDD test records for the demo (optional)
+python src/run_improved_experiments.py      # dedup + balancing, diagnosis experiments A-D,
+                                            # edge model + flows for the Edge IDS Monitor
 
 streamlit run app.py
 ```
@@ -119,6 +121,22 @@ Legacy files from an earlier UNSW-NB15 prototype (`src/data_loader.py`,
 `src/evaluate.py`, `src/diagnose_collapse.py`, `src/visualize.py`,
 `notebooks/01_exploration.ipynb`, `outputs/`) are not part of the current
 5G-NIDD → CICIoT2023 pipeline and their results should not be reported.
+
+## Improved experiments (`src/run_improved_experiments.py`)
+
+Writes to `results/improved/` and `models/edge_ids_model.joblib`; shown on the
+dashboard's **Improved Experiments** and **Edge IDS Monitor** pages.
+
+- Removes duplicate records and measures train/test overlap in the original split
+- Retrains all models with class balancing (and scaled Logistic Regression),
+  plus a depth-limited 10-tree Random Forest; reports size in KB (compared with
+  the 108.42 KB DL-IID model of Khan et al., 2025) and per-flow latency
+- Per-attack-type detection for 5G-NIDD and CICIoT2023
+- Diagnosis: A1 protocol flags rounded to 0/1, A2 + Packet_Count removed,
+  B comparable attack types only, C per-domain standardisation,
+  D 1% labelled CICIoT2023 (retraining, reported separately)
+
+Re-run `src/preprocess_data.py` first so the processed files include `Attack_Type`.
 
 ## Limitations
 

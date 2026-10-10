@@ -12,6 +12,7 @@ as derived. Nothing is hard-coded except dataset descriptions and labels.
 
 from pathlib import Path
 import json
+import time
 
 import joblib
 import numpy as np
@@ -52,6 +53,21 @@ PROTOCOL_SHIFT = RESULTS_DIR / "protocol_distribution_shift.csv"
 DEMO_SAMPLES = RESULTS_DIR / "demo_samples_5g_nidd.csv"
 
 LIGHTWEIGHT_MODEL = MODELS_DIR / "random_forest_10_trees.joblib"
+EDGE_MODEL = MODELS_DIR / "edge_ids_model.joblib"
+
+# Outputs of src/run_improved_experiments.py
+IMPROVED_DIR = RESULTS_DIR / "improved"
+IMPROVED_RESULTS = IMPROVED_DIR / "experiment_results.csv"
+IMPROVED_MODEL_INFO = IMPROVED_DIR / "model_info.csv"
+IMPROVED_PER_ATTACK = IMPROVED_DIR / "per_attack_results.csv"
+IMPROVED_QUALITY = IMPROVED_DIR / "data_quality.json"
+STREAM_SAMPLES = IMPROVED_DIR / "stream_samples.csv"
+
+# Khan et al. (2025), DL-IID, IEEE Access 13: quantised model size
+DL_IID_SIZE_KB = 108.42
+
+# Name of the depth-limited model saved as models/edge_ids_model.joblib
+EDGE_MODEL_NAME = "Random Forest (10 trees, depth ≤ 12)"
 
 FEATURES = [
     "Rate",
@@ -170,6 +186,11 @@ attack_results = load_csv(ATTACK_RESULTS)
 feature_shift = load_csv(FEATURE_SHIFT)
 protocol_shift = load_csv(PROTOCOL_SHIFT)
 demo_samples = load_csv(DEMO_SAMPLES)
+improved = load_csv(IMPROVED_RESULTS)
+improved_info = load_csv(IMPROVED_MODEL_INFO)
+improved_attack = load_csv(IMPROVED_PER_ATTACK)
+improved_quality = load_json(IMPROVED_QUALITY)
+stream_samples = load_csv(STREAM_SAMPLES)
 
 
 # ============================================================
@@ -327,6 +348,8 @@ page = st.sidebar.radio(
         "Cross-Domain Evaluation",
         "Attack Analysis",
         "Feature Shift",
+        "Improved Experiments",
+        "Edge IDS Monitor",
         "Prediction Demo"
     ]
 )
@@ -1620,6 +1643,468 @@ elif page == "Feature Shift":
         "how each dataset defines its features — are also likely to "
         "contribute."
     )
+
+
+# ============================================================
+# IMPROVED EXPERIMENTS
+# ============================================================
+
+elif page == "Improved Experiments":
+
+    st.header("Improved Experiments: Fixes, Diagnosis and Mitigation")
+
+    st.write(
+        "A second round of experiments (src/run_improved_experiments.py). "
+        "It applies the data preparation promised in the project proposal "
+        "(duplicate removal and class balancing), then tests *why* the "
+        "cross-domain performance drops. Every model is still trained on "
+        "5G-NIDD only, except in experiment D, which is labelled as retraining."
+    )
+
+    if improved is None or improved_info is None:
+
+        st.info(
+            "No improved results found yet. Run these locally (the datasets "
+            "are not in the repository):\n\n"
+            "```\npython src/preprocess_data.py\n"
+            "python src/run_improved_experiments.py\n```\n\n"
+            "The script writes its results to results/improved/, and this "
+            "page fills in automatically."
+        )
+
+    else:
+
+        main = improved[improved["Experiment"] == "Main"]
+        in_test = "5G-NIDD test (in-domain)"
+        cross_test = "CICIoT2023 (cross-domain)"
+        models = list(improved_info["Model"])
+
+        # ----------------------------------------------------
+        # DATA QUALITY
+        # ----------------------------------------------------
+
+        if improved_quality:
+            q = improved_quality
+            st.subheader("1. Data quality")
+
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric(
+                "5G-NIDD duplicates removed",
+                pct(1 - q["5g_nidd_rows_after_dedup"] / q["5g_nidd_rows_before_dedup"], 1),
+                help=f"{q['5g_nidd_rows_before_dedup']:,} → {q['5g_nidd_rows_after_dedup']:,} rows"
+            )
+            col2.metric(
+                "CICIoT2023 duplicates removed",
+                pct(1 - q["ciciot2023_rows_after_dedup"] / q["ciciot2023_rows_before_dedup"], 1),
+                help=f"{q['ciciot2023_rows_before_dedup']:,} → {q['ciciot2023_rows_after_dedup']:,} rows"
+            )
+            col3.metric(
+                "Original test rows also in training",
+                pct(q["original_split_test_overlap_share"], 1),
+                help=(
+                    "Share of the ORIGINAL 5G-NIDD test split whose exact "
+                    "7-feature vector also appears in the training split. "
+                    "This inflates in-domain scores."
+                )
+            )
+            col4.metric(
+                "5G-NIDD rows with conflicting labels",
+                pct(q["5g_nidd_conflicting_label_share"], 1),
+                help=(
+                    "Rows whose exact feature vector also occurs with the "
+                    "opposite label. No model can classify all of these correctly."
+                )
+            )
+
+            st.caption(
+                "Duplicates are removed on the 7 features plus the label. "
+                f"After deduplication: {q['train_rows']:,} training and "
+                f"{q['test_rows']:,} test rows (5G-NIDD), "
+                f"{q['ciciot2023_rows_after_dedup']:,} CICIoT2023 rows; malicious share "
+                f"{pct(q['5g_nidd_malicious_share_after_dedup'], 1)} and "
+                f"{pct(q['ciciot2023_malicious_share_after_dedup'], 1)}."
+            )
+
+        # ----------------------------------------------------
+        # MAIN RESULTS
+        # ----------------------------------------------------
+
+        st.subheader("2. Main experiment: deduplicated data + class balancing")
+
+        table = main.pivot_table(
+            index="Model", columns="Test_Set",
+            values=["F1", "Recall", "Specificity", "Balanced_Accuracy", "MCC"]
+        ).reindex(models)
+
+        rows = []
+        for model_name in models:
+            row = {"Model": model_name}
+            for label, test_set in [("5G-NIDD", in_test), ("CICIoT2023", cross_test)]:
+                for metric in ["F1", "Recall", "Specificity", "Balanced_Accuracy"]:
+                    row[f"{label} {metric.replace('_', ' ')} (%)"] = round(
+                        table.loc[model_name, (metric, test_set)] * 100, 2)
+                row[f"{label} MCC"] = round(table.loc[model_name, ("MCC", test_set)], 3)
+            rows.append(row)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+
+        st.caption(
+            "Balanced accuracy (the mean of malicious recall and benign "
+            "recall) and MCC are not inflated by class imbalance: 50% balanced "
+            "accuracy and an MCC of 0 mean no better than chance."
+        )
+
+        col1, col2 = st.columns(2)
+
+        for col, metric, label in [
+            (col1, "F1", "F1 score (%)"),
+            (col2, "Balanced_Accuracy", "Balanced accuracy (%)"),
+        ]:
+            with col:
+                fig, ax = plt.subplots(figsize=(7, 4.4))
+                positions = np.arange(len(models))
+                width = 0.38
+                in_vals = [table.loc[m, (metric, in_test)] * 100 for m in models]
+                out_vals = [table.loc[m, (metric, cross_test)] * 100 for m in models]
+                b1 = ax.bar(positions - width / 2 - 0.01, in_vals, width,
+                            color=COLOR_5G, label="5G-NIDD (in-domain)")
+                b2 = ax.bar(positions + width / 2 + 0.01, out_vals, width,
+                            color=COLOR_CIC, label="CICIoT2023 (cross-domain)")
+                ax.bar_label(b1, fmt="%.1f", padding=2, fontsize=8)
+                ax.bar_label(b2, fmt="%.1f", padding=2, fontsize=8)
+                if metric == "Balanced_Accuracy":
+                    ax.axhline(50, color=COLOR_REFERENCE, linestyle="--", linewidth=1,
+                               label="Chance (50%)")
+                ax.set_xticks(positions)
+                ax.set_xticklabels([m.replace(" (", "\n(") for m in models], fontsize=8)
+                ax.set_ylabel(label)
+                ax.set_ylim(0, 105)
+                ax.grid(axis="y")
+                ax.legend(loc="upper center", ncol=3, bbox_to_anchor=(0.5, 1.15), fontsize=8.5)
+                show(fig)
+
+        # Before / after comparison with the original results
+        if algorithms is not None:
+            name_map = {
+                "Random Forest (10 trees)": "Random Forest (10 trees)",
+                "Decision Tree": "Decision Tree",
+                "Logistic Regression": "Logistic Regression (scaled)",
+                "XGBoost": "XGBoost",
+            }
+            compare = []
+            for _, row in algorithms.iterrows():
+                new_name = name_map.get(row["Model"])
+                if new_name in table.index:
+                    compare.append({
+                        "Model": row["Model"],
+                        "5G-NIDD F1 before (%)": round(row["InDomain_F1"] * 100, 2),
+                        "5G-NIDD F1 after (%)": round(table.loc[new_name, ("F1", in_test)] * 100, 2),
+                        "CICIoT2023 F1 before (%)": round(row["CrossDomain_F1"] * 100, 2),
+                        "CICIoT2023 F1 after (%)": round(table.loc[new_name, ("F1", cross_test)] * 100, 2),
+                    })
+            if compare:
+                with st.expander("Before vs after the data-preparation fixes"):
+                    st.dataframe(pd.DataFrame(compare), width="stretch", hide_index=True)
+                    st.caption(
+                        "“Before” = original results (duplicates kept, no "
+                        "balancing, unscaled Logistic Regression). The test "
+                        "sets differ after deduplication, so this shows the "
+                        "effect of the fixes, not a like-for-like rerun."
+                    )
+
+        # ----------------------------------------------------
+        # LIGHTWEIGHT
+        # ----------------------------------------------------
+
+        st.subheader("3. Is it lightweight enough for a 5G edge node?")
+
+        info = improved_info.set_index("Model").reindex(models)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            fig, ax = plt.subplots(figsize=(7, 4.2))
+            sizes = info["Model_Size_KB"].to_numpy(dtype=float)
+            bars = ax.barh(models, sizes, color=COLOR_REFERENCE, height=0.55)
+            ax.bar_label(bars, labels=[f"{v:,.1f} KB" for v in sizes], padding=3, fontsize=8.5)
+            ax.axvline(DL_IID_SIZE_KB, color=COLOR_5G, linestyle="--", linewidth=1.5,
+                       label=f"DL-IID, Khan et al. ({DL_IID_SIZE_KB} KB)")
+            ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12), fontsize=8.5)
+            ax.set_xscale("log")
+            ax.set_xlabel("Saved model size (KB, log scale)")
+            ax.invert_yaxis()
+            ax.grid(axis="x")
+            show(fig)
+
+        with col2:
+            fig, ax = plt.subplots(figsize=(7, 4.2))
+            latency = info["Latency_ms_per_flow"].to_numpy(dtype=float)
+            bars = ax.barh(models, latency, color=COLOR_REFERENCE, height=0.55)
+            ax.bar_label(bars, fmt="%.2f ms", padding=3, fontsize=8.5)
+            ax.set_xlabel("Median time to classify one flow (ms, single thread)")
+            ax.invert_yaxis()
+            ax.grid(axis="x")
+            show(fig)
+
+        st.caption(
+            "The dashed line is the 108.42 KB quantised DL-IID model of Khan et "
+            "al. (2025), the reference paper for this project. Latency was "
+            "measured on the machine that ran the experiments, one flow at a time."
+        )
+
+        # ----------------------------------------------------
+        # PER-ATTACK
+        # ----------------------------------------------------
+
+        if improved_attack is not None:
+
+            st.subheader("4. Detection per attack type, in-domain and cross-domain")
+
+            chosen = st.selectbox("Model", models, key="improved_attack_model",
+                                  index=models.index(EDGE_MODEL_NAME) if EDGE_MODEL_NAME in models else 0)
+
+            pa = improved_attack[improved_attack["Model"] == chosen]
+
+            col1, col2 = st.columns(2)
+
+            for col, test_set, color in [
+                (col1, in_test, COLOR_5G),
+                (col2, cross_test, COLOR_CIC),
+            ]:
+                with col:
+                    part = pa[pa["Test_Set"] == test_set].sort_values("Predicted_Malicious_Rate")
+                    if part.empty:
+                        st.info(f"No per-attack results for {test_set}.")
+                        continue
+                    st.markdown(f"**{test_set}**")
+                    fig, ax = plt.subplots(figsize=(7, max(3, 0.28 * len(part) + 1)))
+                    bars = ax.barh(part["Attack_Type"], part["Predicted_Malicious_Rate"] * 100,
+                                   color=color, height=0.65)
+                    ax.bar_label(bars, fmt="%.1f%%", padding=3, fontsize=8)
+                    ax.set_xlim(0, 115)
+                    ax.set_xlabel("Labelled malicious (%)")
+                    ax.tick_params(axis="y", labelsize=8)
+                    ax.grid(axis="x")
+                    show(fig)
+
+            st.caption(
+                "For attack types this is the detection rate. For the benign "
+                "row it is the false-alarm rate (benign traffic labelled malicious)."
+            )
+
+        # ----------------------------------------------------
+        # DIAGNOSIS / MITIGATION
+        # ----------------------------------------------------
+
+        st.subheader("5. Why does performance drop? Diagnosis experiments")
+
+        st.markdown(
+            """
+            | Experiment | What changes | What it tests |
+            |---|---|---|
+            | **Main** | nothing extra | the cross-domain result after the data fixes |
+            | **A1** | CICIoT2023 protocol flags rounded to 0/1 | the protocol features are defined differently |
+            | **A2** | A1 + Packet_Count removed from both | the feature with the largest definition mismatch |
+            | **B** | CICIoT2023 limited to attacks comparable to 5G-NIDD | whether unseen attack types explain the drop |
+            | **C** | each dataset standardised with its own statistics | a simple fix for different value ranges (uses unlabelled CICIoT2023) |
+            | **D** | 1% of labelled CICIoT2023 added to training | how cheaply an operator could adapt the model (**this is retraining**) |
+            """
+        )
+
+        cross = improved[improved["Test_Set"] != in_test].copy()
+        experiments = list(dict.fromkeys(cross["Experiment"]))
+
+        chosen = st.selectbox("Model", models, key="improved_diag_model",
+                              index=models.index(EDGE_MODEL_NAME) if EDGE_MODEL_NAME in models else 0)
+
+        part = cross[cross["Model"] == chosen].set_index("Experiment").reindex(experiments)
+
+        fig, axes = plt.subplots(1, 3, figsize=(15, 4.4), sharey=True)
+        for ax, metric, title in [
+            (axes[0], "Recall", "Malicious recall (%)"),
+            (axes[1], "Specificity", "Benign recall (%)"),
+            (axes[2], "Balanced_Accuracy", "Balanced accuracy (%)"),
+        ]:
+            values = part[metric].to_numpy(dtype=float) * 100
+            bars = ax.barh(experiments, values, color=COLOR_CIC, height=0.6)
+            for bar, experiment in zip(bars, experiments):
+                if experiment.startswith("D"):
+                    bar.set_hatch("///")
+                    bar.set_edgecolor("#7a2e10")
+            ax.bar_label(bars, fmt="%.1f", padding=3, fontsize=8.5)
+            if metric == "Balanced_Accuracy":
+                ax.axvline(50, color=COLOR_REFERENCE, linestyle="--", linewidth=1)
+            ax.set_xlim(0, 112)
+            ax.set_title(title, fontsize=11)
+            ax.grid(axis="x")
+        axes[0].invert_yaxis()
+        axes[0].tick_params(axis="y", labelsize=9)
+        show(fig)
+
+        st.caption(
+            "All bars are measured on CICIoT2023 (B: comparable-attack subset; "
+            "D: the 99% not used for training). The hatched bar (D) involves "
+            "retraining and is not a no-retraining result. Dashed line = chance."
+        )
+
+        main_bal = part.loc["Main", "Balanced_Accuracy"] if "Main" in part.index else np.nan
+        no_retrain = part[~part.index.str.startswith("D")]
+        best = no_retrain["Balanced_Accuracy"].idxmax()
+        lines = [
+            f"Without retraining, the best balanced accuracy for **{chosen}** comes from "
+            f"**{best}** ({pct(no_retrain.loc[best, 'Balanced_Accuracy'], 1)}, "
+            f"vs {pct(main_bal, 1)} in the main experiment)."
+        ]
+        d_rows = part[part.index.str.startswith("D")]
+        if not d_rows.empty:
+            lines.append(
+                f"With 1% labelled CICIoT2023 data (retraining), balanced accuracy is "
+                f"{pct(d_rows['Balanced_Accuracy'].iloc[0], 1)}."
+            )
+        st.info(" ".join(lines))
+
+        with st.expander("All models, all experiments (CICIoT2023)"):
+            all_table = cross.pivot_table(
+                index="Experiment", columns="Model", values="Balanced_Accuracy"
+            ).reindex(experiments)[models] * 100
+            st.dataframe(all_table.round(2), width="stretch")
+            st.caption("Balanced accuracy (%) on CICIoT2023.")
+
+        st.markdown(
+            """
+            **How to read these results**
+
+            - If **A1/A2** recover a lot, part of the drop comes from the two
+              datasets *defining* the shared features differently, not only
+              from the networks being different.
+            - If **B** stays low, the model misses even attacks of a kind it
+              was trained on, so unseen attack types are not the whole story.
+            - If **C** helps, the drop is partly a difference in value ranges
+              that unlabelled target data can correct.
+            - **D** shows how much a small amount of labelled data from the new
+              network helps: a practical option for an operator deploying the
+              IDS in a new 5G or IoT environment.
+            """
+        )
+
+
+# ============================================================
+# EDGE IDS MONITOR
+# ============================================================
+
+elif page == "Edge IDS Monitor":
+
+    st.header("5G Edge IDS Monitor")
+
+    st.write(
+        "A simulation of how an operator would run the lightweight IDS at a 5G "
+        "edge node: real flow records are replayed one at a time through the "
+        "trained model, and every flow labelled malicious raises an alert. "
+        "Switch the feed to CICIoT2023 to watch the same model run in a "
+        "different network environment."
+    )
+
+    model_path = EDGE_MODEL if EDGE_MODEL.exists() else LIGHTWEIGHT_MODEL
+
+    if stream_samples is None or not model_path.exists():
+
+        st.info(
+            "The monitor needs results/improved/stream_samples.csv and a trained "
+            "model in models/. Run `python src/run_improved_experiments.py` "
+            "locally to create both."
+        )
+
+    else:
+
+        monitor_model = load_model(model_path)
+        if "n_jobs" in monitor_model.get_params():
+            monitor_model.set_params(n_jobs=1)
+
+        model_label = (
+            EDGE_MODEL_NAME + " — balanced, deduplicated training"
+            if model_path == EDGE_MODEL else "Random Forest (10 trees) — original"
+        )
+        st.caption(f"Model: {model_label}. Flows: real records saved by "
+                   "src/run_improved_experiments.py (5G-NIDD test split, never used "
+                   "for training, and CICIoT2023).")
+
+        col1, col2, col3 = st.columns([2, 1, 1])
+        source = col1.radio(
+            "Traffic feed",
+            ["5G-NIDD (5G network, in-domain)", "CICIoT2023 (different network)"],
+            horizontal=True
+        )
+        available = int((stream_samples["Dataset"] == source.split(" ")[0]).sum())
+        n_flows = col2.slider("Flows to replay", 20, max(20, available), min(150, max(20, available)), step=10)
+        delay = col3.select_slider("Replay speed", ["Fast", "Normal", "Slow"], value="Normal")
+
+        if st.button("▶ Start replay", type="primary"):
+
+            feed = stream_samples[stream_samples["Dataset"] == source.split(" ")[0]].head(n_flows)
+            pause = {"Fast": 0.0, "Normal": 0.03, "Slow": 0.12}[delay]
+
+            progress = st.progress(0.0, text="Replaying flows…")
+            stats = st.empty()
+            alerts_box = st.empty()
+
+            alerts = []
+            latencies = []
+            tp = fp = fn = tn = 0
+
+            for i, (_, flow) in enumerate(feed.iterrows(), start=1):
+                x = flow[FEATURES].to_frame().T.astype(float)
+                start = time.perf_counter()
+                predicted = int(monitor_model.predict(x)[0])
+                latencies.append((time.perf_counter() - start) * 1000)
+
+                actual = int(flow["Target"])
+                tp += int(predicted == 1 and actual == 1)
+                fp += int(predicted == 1 and actual == 0)
+                fn += int(predicted == 0 and actual == 1)
+                tn += int(predicted == 0 and actual == 0)
+
+                if predicted:
+                    alerts.insert(0, {
+                        "Flow #": i,
+                        "Protocol": "TCP" if flow["TCP"] >= 0.5 else "UDP" if flow["UDP"] >= 0.5
+                                    else "ICMP" if flow["ICMP"] >= 0.5 else "Other",
+                        "Rate": round(float(flow["Rate"]), 2),
+                        "TTL": round(float(flow["TTL"]), 1),
+                        "Ground truth": flow["Attack_Type"],
+                        "Correct": "✅" if actual else "❌ false alarm",
+                    })
+
+                if i % 5 == 0 or i == len(feed):
+                    with stats.container():
+                        c = st.columns(5)
+                        c[0].metric("Flows processed", f"{i}")
+                        c[1].metric("Alerts raised", f"{tp + fp}")
+                        c[2].metric("Attacks in feed", f"{tp + fn}")
+                        c[3].metric("Attacks caught", f"{tp}",
+                                    help="Ground truth is shown for evaluation only; a real IDS would not know it.")
+                        c[4].metric("Median latency", f"{np.median(latencies):.2f} ms")
+                    alerts_box.dataframe(pd.DataFrame(alerts[:12]) if alerts else
+                                         pd.DataFrame({"Alerts": ["No alerts yet"]}),
+                                         width="stretch", hide_index=True)
+                    progress.progress(i / len(feed), text=f"Replaying flows… {i}/{len(feed)}")
+
+                if pause:
+                    time.sleep(pause)
+
+            progress.progress(1.0, text="Replay finished")
+
+            attacks = tp + fn
+            if attacks:
+                rate = tp / attacks
+                message = (f"Caught {tp} of {attacks} attacks ({rate * 100:.1f}%) with "
+                           f"{fp} false alarm(s) out of {fp + tn} benign flows.")
+                (st.success if rate >= 0.5 else st.error)(message)
+            else:
+                st.info(f"This feed contained no attacks; {fp} false alarm(s).")
+
+        st.caption(
+            "This is a replay of recorded flows for demonstration, not a live "
+            "network capture, and the model is not a production IDS."
+        )
 
 
 # ============================================================
