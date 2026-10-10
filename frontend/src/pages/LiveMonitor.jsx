@@ -1,40 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  CartesianGrid,
-  ComposedChart,
-  Legend as RLegend,
-  Line,
-  ReferenceLine,
-  ResponsiveContainer,
-  Scatter,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { FlaskConical, Pause, Play, Square, Trash2 } from "lucide-react";
 import { Badge, Button, Card, Callout, EmptyState, PageHeader, Section, Segmented, Select, Stat, Table } from "../components/ui";
 import { api } from "../lib/api";
+import LiveCharts from "../components/LiveCharts";
 import { COLORS, num } from "../lib/format";
 
 const time = (iso) => new Date(iso).getTime();
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-
-function TimeTooltip({ active, payload }) {
-  if (!active || !payload?.length) return null;
-  const p = payload[0].payload;
-  return (
-    <div className="rounded-xl border border-line bg-white/95 px-3 py-2 text-xs shadow-lg">
-      <div className="mb-1 font-semibold">{clock(p.t)}</div>
-      {p.source && <div className="text-slate-600">{p.source} → {p.destination} ({p.protocol})</div>}
-      {p.prediction && <div>Prediction: <b>{p.prediction}</b></div>}
-      {p.p !== undefined && <div>Malicious probability: <b>{(p.p * 100).toFixed(0)}%</b></div>}
-      {p.rate !== undefined && <div>Traffic rate: <b>{p.rate.toFixed(1)} pkt/s</b></div>}
-      {p.verdict && <div>Window verdict: <b>{p.verdict}</b></div>}
-    </div>
-  );
-}
-
-const verdictColor = (v) => (v === "MALICIOUS" ? COLORS.malicious : v === "BENIGN" ? COLORS.benign : COLORS.neutral);
 
 export default function LiveMonitor({ status }) {
   const live = status?.live;
@@ -127,11 +99,6 @@ export default function LiveMonitor({ status }) {
 
   const windows = state?.windows ?? [];
   const latest = windows[windows.length - 1];
-  const flowPoints = (state?.flows ?? []).map((f) => ({
-    t: time(f.Time), p: f.Malicious_Probability, prediction: f.Prediction,
-    source: f.Source, destination: f.Destination, protocol: f.Protocol,
-  }));
-  const windowPoints = windows.map((w) => ({ t: time(w.Time), p: w.Max_Malicious_Probability, rate: w.Traffic_Rate, verdict: w.Verdict }));
   const isDemo = state?.mode === "demo";
 
   return (
@@ -281,49 +248,7 @@ export default function LiveMonitor({ status }) {
                 </div>
               </div>
 
-              <div className="mb-6 grid gap-5 lg:grid-cols-2">
-                <Card>
-                  <div className="text-sm font-semibold">Malicious probability over time</div>
-                  <div className="text-xs text-muted">One point per flow; line = highest flow probability per window; dashed = 0.5 threshold</div>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <ComposedChart margin={{ top: 14, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid vertical={false} stroke="#eef2f6" />
-                      <XAxis type="number" dataKey="t" domain={["dataMin", "dataMax"]} tickFormatter={clock} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} />
-                      <YAxis domain={[0, 1]} tickFormatter={(v) => `${v * 100}%`} tickLine={false} axisLine={false} width={48} />
-                      <Tooltip content={<TimeTooltip />} />
-                      <ReferenceLine y={0.5} stroke="#475569" strokeDasharray="5 4" />
-                      <Line data={windowPoints} dataKey="p" name="Window peak" stroke="#94a3b8" strokeWidth={2} dot={false} isAnimationActive={false} />
-                      <Scatter data={flowPoints.filter((f) => f.prediction === "BENIGN")} dataKey="p" name="Benign flow" fill={COLORS.benign} isAnimationActive={false} />
-                      <Scatter data={flowPoints.filter((f) => f.prediction === "MALICIOUS")} dataKey="p" name="Malicious flow" fill={COLORS.malicious} shape="triangle" isAnimationActive={false} />
-                      <RLegend iconSize={9} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </Card>
-                <Card>
-                  <div className="text-sm font-semibold">Traffic rate over time</div>
-                  <div className="text-xs text-muted">Packets per second per window, marked by the window verdict</div>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <ComposedChart data={windowPoints} margin={{ top: 14, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid vertical={false} stroke="#eef2f6" />
-                      <XAxis type="number" dataKey="t" domain={["dataMin", "dataMax"]} tickFormatter={clock} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} />
-                      <YAxis tickLine={false} axisLine={false} width={48} />
-                      <Tooltip content={<TimeTooltip />} />
-                      <Line
-                        dataKey="rate"
-                        name="Traffic rate"
-                        stroke="#94a3b8"
-                        strokeWidth={2}
-                        isAnimationActive={false}
-                        dot={(props) => <circle key={props.index} cx={props.cx} cy={props.cy} r={4.5} fill={verdictColor(props.payload.verdict)} stroke="white" strokeWidth={1.5} />}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                  <div className="mt-1 flex gap-4 text-xs text-slate-600">
-                    <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS.benign }} />Benign window</span>
-                    <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS.malicious }} />Malicious window</span>
-                  </div>
-                </Card>
-              </div>
+              <LiveCharts windows={windows} />
 
               <Section title="Live traffic history" subtitle="Most recent flow observations, newest first. Packets themselves are never stored.">
                 <Table

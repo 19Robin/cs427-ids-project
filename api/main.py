@@ -274,7 +274,8 @@ def live_state(flows: int = 200):
     if _monitor is None:
         return {"active": False}
     state = _monitor.snapshot()      # also keeps the monitor's watchdog alive
-    state["flows"] = state["flows"][:max(0, flows)]
+    # the monitor appends new flows at the end: send the newest ones, newest first
+    state["flows"] = list(reversed(state["flows"]))[:max(0, flows)]
     state["active"] = True
     return clean(state)
 
