@@ -98,9 +98,43 @@ python src/analyse_feature_shift.py         # feature / protocol distribution sh
 python src/extract_demo_samples.py          # real 5G-NIDD test records for the demo (optional)
 python src/run_improved_experiments.py      # dedup + balancing, diagnosis experiments A-D,
                                             # edge model + flows for the Edge IDS Monitor
-
-streamlit run app.py
 ```
+
+## Dashboard
+
+### React dashboard (recommended)
+
+A React interface (`frontend/`) on top of a FastAPI server (`api/`) that wraps
+the existing Python code: result files, trained models, the Edge IDS replay and
+the live capture. The built site (`frontend/dist/`) is committed, so a demo
+needs **only Python and one command**, run from the project root:
+
+```bash
+uvicorn api.main:app --port 8000
+```
+
+Open http://localhost:8000. To open it from a phone on the laptop's hotspot,
+start it with `--host 0.0.0.0` and browse to `http://192.168.137.1:8000`. For
+live packet capture on Windows, start the terminal as administrator (same
+Npcap requirements as below).
+
+Pages: Overview · Model Size & Trees · Algorithm Comparison · Cross-Domain
+Evaluation · Attack Analysis · Feature & Protocol Shift · Improved Experiments ·
+5G Edge IDS Monitor · Live IDS Monitoring · Prediction Demo. Pages whose
+results or models are missing show the command that creates them.
+
+Changing the frontend needs Node.js 20+:
+
+```bash
+cd frontend
+npm install
+npm run dev      # development server on http://localhost:5173 (uses the API on port 8000)
+npm run build    # rebuild frontend/dist after changes, then commit it
+```
+
+### Streamlit dashboard (original)
+
+`streamlit run app.py` still works and shows the same results.
 
 Model files (`models/*.joblib`) are git-ignored because of their size, so the
 Prediction Demo only works after running the training scripts locally. All
@@ -224,7 +258,9 @@ devices and networks you own or control.
 ## Repository layout
 
 ```
-app.py                     Streamlit dashboard
+api/                       FastAPI server for the React dashboard
+frontend/                  React dashboard (Vite + Tailwind + Recharts); dist/ is the built site
+app.py                     Streamlit dashboard (original)
 src/                       preprocessing, training and evaluation scripts (above)
 src/live_*.py              live IDS: capture, feature extraction, prediction
 results/                   all result files used by the dashboard
