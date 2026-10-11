@@ -132,10 +132,6 @@ npm run dev      # development server on http://localhost:5173 (uses the API on 
 npm run build    # rebuild frontend/dist after changes, then commit it
 ```
 
-### Streamlit dashboard (original)
-
-`streamlit run app.py` still works and shows the same results.
-
 Model files (`models/*.joblib`) are git-ignored because of their size, so the
 Prediction Demo only works after running the training scripts locally. All
 other dashboard pages read only the files in `results/`.
@@ -179,11 +175,11 @@ never stored.
 
 ### Installation (Windows 11)
 
-1. `pip install -r requirements.txt` (adds `scapy` and `altair`).
+1. `pip install -r requirements.txt` (includes `scapy`).
 2. For Live Capture Mode install **Npcap** from https://npcap.com/#download
    and tick *"Install Npcap in WinPcap API-compatible Mode"*. If you tick
    *"Restrict Npcap driver's access to Administrators only"*, start the
-   terminal with **Run as administrator** before `streamlit run app.py`.
+   terminal with **Run as administrator** before `uvicorn api.main:app --port 8000`.
    Demo Mode needs neither Npcap nor admin rights.
 
 ### Find the network interface
@@ -195,7 +191,7 @@ python -m src.live_capture --list-interfaces
 Use the adapter that carries the test traffic: usually `WiFi`, or the
 *Microsoft Wi-Fi Direct Virtual Adapter* (IP `192.168.137.1`) when the phone
 is connected to the laptop's Mobile hotspot. A quick command-line check
-without Streamlit:
+without the dashboard:
 
 ```bash
 python -m src.live_capture --test-capture "WiFi" --seconds 15
@@ -205,10 +201,10 @@ python -m src.live_capture --test-demo --seconds 15
 ### Run and use
 
 ```bash
-streamlit run app.py
+uvicorn api.main:app --port 8000
 ```
 
-Open **Live IDS Monitoring** in the sidebar.
+Open http://localhost:8000 and choose **Live IDS Monitoring** in the sidebar.
 
 - **Live Capture Mode:** choose the interface, optionally enter one device IP
   (only its traffic is analysed), choose the window length, press
@@ -218,9 +214,7 @@ Open **Live IDS Monitoring** in the sidebar.
   feature extraction and model. "Auto" shows normal traffic with a simulated
   suspicious burst every 10 windows; the burst profiles imitate 5G-NIDD attack
   flow statistics, and the model makes the decision.
-- **Stop Monitoring** stops capture; **Clear History** empties the tables and
-  graphs. While monitoring runs, a status line appears in the sidebar on
-  every page.
+- **Stop** stops capture; **Clear** empties the tables and graphs.
 
 ### Controlled demonstration with an Android phone
 
@@ -231,7 +225,8 @@ The phone only generates **normal traffic** inside your own test network.
 3. Select the Wi-Fi Direct Virtual Adapter (`192.168.137.1`) and optionally
    enter the phone's IP.
 4. Start monitoring and use the phone normally: browse, stream video, or
-   open the dashboard on the phone at `http://192.168.137.1:8501`.
+   open the dashboard on the phone at `http://192.168.137.1:8000` (start the
+   server with `--host 0.0.0.0`).
 
 On a shared Wi-Fi network (no hotspot) the laptop only sees its own traffic
 and traffic addressed to it, so use the hotspot for phone traffic. Only use
@@ -252,27 +247,24 @@ devices and networks you own or control.
 - Scapy dissects packets in Python: suitable for a laptop demo (hundreds to a
   few thousand packets per second), not for high-speed links. At most 5,000
   flows per window are analysed.
-- Monitoring state belongs to one browser session; if the browser is closed,
-  the monitor stops itself after about 3 minutes.
+- The monitor runs in the API server and stops itself about 3 minutes after the
+  Live IDS Monitoring page was last open.
 
 ## Repository layout
 
 ```
 api/                       FastAPI server for the React dashboard
 frontend/                  React dashboard (Vite + Tailwind + Recharts); dist/ is the built site
-app.py                     Streamlit dashboard (original)
 src/                       preprocessing, training and evaluation scripts (above)
 src/live_*.py              live IDS: capture, feature extraction, prediction
 results/                   all result files used by the dashboard
 models/                    trained models (git-ignored)
 data/raw, data/processed   datasets (git-ignored)
-*.py (root)                one-off dataset inspection / mapping-check scripts
+final_feature_validation.py  check of the 7-feature mapping on the raw datasets
 ```
 
-Legacy files from an earlier UNSW-NB15 prototype (`src/data_loader.py`,
-`src/evaluate.py`, `src/diagnose_collapse.py`, `src/visualize.py`,
-`notebooks/01_exploration.ipynb`, `outputs/`) are not part of the current
-5G-NIDD → CICIoT2023 pipeline and their results should not be reported.
+Files from an earlier UNSW-NB15 prototype and one-off inspection scripts were
+removed; they remain available in the Git history.
 
 ## Improved experiments (`src/run_improved_experiments.py`)
 

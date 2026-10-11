@@ -11,7 +11,7 @@ EXISTING trained model (live_predictor.py). The model is never retrained.
                       the network) and runs them through the same feature
                       extraction and model. SIMULATION - NOT REAL TRAFFIC.
 
-Work runs in background threads so the Streamlit page never blocks; the page
+Work runs in background threads so the dashboard never blocks; the API
 reads a snapshot of the rolling history (only recent observations are kept,
 packets themselves are never stored).
 
@@ -48,14 +48,14 @@ IS_WINDOWS = platform.system() == "Windows"
 
 NPCAP_HELP = (
     "Install Npcap from https://npcap.com/#download (tick \"Install Npcap in "
-    "WinPcap API-compatible Mode\"), then restart the terminal and Streamlit."
+    "WinPcap API-compatible Mode\"), then restart the terminal and the dashboard server."
 )
 PERMISSION_HELP = (
-    "Packet capture was refused. Either start the terminal (and Streamlit) with "
+    "Packet capture was refused. Either start the terminal (and the dashboard server) with "
     "\"Run as administrator\", or reinstall Npcap with \"Restrict Npcap driver's "
     "access to Administrators only\" unticked."
     if IS_WINDOWS else
-    "Packet capture needs root privileges (for example: sudo streamlit run app.py)."
+    "Packet capture needs root privileges (for example: sudo uvicorn api.main:app --port 8000)."
 )
 
 

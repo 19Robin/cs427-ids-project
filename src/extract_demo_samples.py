@@ -2,7 +2,7 @@
 extract_demo_samples.py
 
 Saves a small number of REAL records from the 5G-NIDD held-out test split to
-results/demo_samples_5g_nidd.csv, so the Streamlit Prediction Demo can offer
+results/demo_samples_5g_nidd.csv, so the dashboard's Prediction Demo can offer
 genuine example inputs instead of arbitrary numbers.
 
 The split is recreated exactly as in train_model.py / test_lightweight_models.py
