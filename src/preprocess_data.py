@@ -102,8 +102,7 @@ fiveg_processed["Target"] = (
     .astype(int)
 )
 
-# Attack type (kept for per-attack analysis only, never used as a feature).
-# 5G-NIDD stores it in the "Attack Type" column; benign rows are "Benign".
+# Attack type (per-attack analysis only, not a feature)
 attack_column = next(
     (c for c in ["Attack Type", "Attack_Type", "attack_type"] if c in fiveg.columns),
     None

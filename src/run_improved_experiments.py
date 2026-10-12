@@ -1,40 +1,3 @@
-"""
-run_improved_experiments.py
-
-Second round of experiments, run after the original baseline scripts.
-
-1. Data quality (proposal section 4.3)
-   - removes duplicate records from both datasets
-   - measures how many 5G-NIDD test rows also appeared in the training set
-     under the ORIGINAL (non-deduplicated) split, i.e. potential leakage
-
-2. Main experiment, repeated with the fixes promised in the proposal
-   - deduplicated data
-   - class balancing (class_weight="balanced" / scale_pos_weight)
-   - Logistic Regression with feature scaling (fitted on 5G-NIDD train only)
-   - a depth-limited 10-tree Random Forest as a genuinely small model
-   - model size in KB, per-flow inference latency, confusion matrices,
-     balanced accuracy, specificity and MCC
-   - per-attack-type detection for BOTH 5G-NIDD (in-domain) and CICIoT2023
-
-3. Diagnosis / mitigation experiments (all trained on 5G-NIDD only)
-   A1  CICIoT2023 protocol flags rounded to 0/1 (feature alignment)
-   A2  A1 + Packet_Count removed (feature with the largest definitional mismatch)
-   B   CICIoT2023 restricted to attack types comparable to 5G-NIDD attacks
-   C   each dataset standardised with its OWN statistics (unlabelled target data)
-   D   1% of labelled CICIoT2023 added to training (this IS retraining;
-       reported separately, tested on the remaining 99%)
-
-4. Saves a small set of REAL flows from both test sets for the dashboard's
-   Edge IDS Monitor, and the depth-limited model as models/edge_ids_model.joblib.
-
-Requires data/processed/*.csv from preprocess_data.py. The per-attack and
-experiment B results need the Attack_Type column added to preprocess_data.py,
-so re-run preprocessing first if your processed files predate it.
-
-Run:  python src/run_improved_experiments.py
-"""
-
 from pathlib import Path
 import io
 import json
@@ -94,8 +57,7 @@ RANDOM_STATE = 42
 
 EDGE_MODEL_NAME = "Random Forest (10 trees, depth ≤ 12)"
 
-# CICIoT2023 labels whose attack family also exists in 5G-NIDD
-# (5G-NIDD: ICMP/UDP/SYN/HTTP flood, slow-rate DoS, SYN/TCP-connect/UDP scan).
+# CICIoT2023 attacks with a comparable attack type in 5G-NIDD
 COMPARABLE_IN_5G = {
     "DDOS-ICMP_FLOOD",
     "DDOS-UDP_FLOOD",
@@ -187,10 +149,6 @@ def size_kb(model):
 
 
 def latency_ms(model, X, repeats=200):
-    """
-    Median time to classify ONE flow (as an edge IDS would), single-threaded:
-    with n_jobs=-1 the thread start-up cost would dominate a one-row prediction.
-    """
     if "n_jobs" in model.get_params():
         model.set_params(n_jobs=1)
     rows = X.sample(n=min(repeats, len(X)), random_state=RANDOM_STATE)
@@ -272,7 +230,7 @@ section("1. DATA QUALITY: DUPLICATES AND TRAIN/TEST OVERLAP")
 
 quality = {}
 
-# Overlap under the ORIGINAL split (no deduplication), same settings as before
+# Overlap in the original split (before deduplication)
 X_tr0, X_te0, y_tr0, y_te0 = train_test_split(
     fiveg[FEATURES], fiveg[TARGET],
     test_size=0.20, stratify=fiveg[TARGET], random_state=RANDOM_STATE
@@ -285,7 +243,7 @@ quality["original_split_test_overlap_share"] = float(overlap.mean())
 print(f"Original split: {overlap.mean() * 100:.2f}% of 5G-NIDD test rows have a "
       f"feature vector that also appears in the training rows.")
 
-# Feature vectors that occur with BOTH labels (cannot be separated by any model)
+# Feature vectors that occur with both labels
 for name, df in [("5g_nidd", fiveg), ("ciciot2023", cic)]:
     labels_per_vector = df.groupby(row_hash(df))[TARGET].nunique()
     conflicting_vectors = labels_per_vector[labels_per_vector > 1].index

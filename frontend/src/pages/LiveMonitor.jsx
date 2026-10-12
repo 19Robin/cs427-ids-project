@@ -29,7 +29,7 @@ export default function LiveMonitor({ status }) {
     }
   }, []);
 
-  // pick up a monitor that is already running, and poll while it runs
+  // poll while monitoring is running
   useEffect(() => {
     if (live?.imports_ok) refresh();
   }, [live, refresh]);

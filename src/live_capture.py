@@ -1,27 +1,3 @@
-"""
-live_capture.py
-
-Live IDS proof-of-concept: packet capture (or a safe simulation), windowed
-flow feature extraction (live_features.py) and classification with the
-EXISTING trained model (live_predictor.py). The model is never retrained.
-
-  Live Capture Mode   Scapy + Npcap capture packets from one local interface.
-                      Capture is passive: nothing is sent on the network.
-  Demo Mode           Generates SYNTHETIC packets in memory (nothing is sent on
-                      the network) and runs them through the same feature
-                      extraction and model. SIMULATION - NOT REAL TRAFFIC.
-
-Work runs in background threads so the dashboard never blocks; the API
-reads a snapshot of the rolling history (only recent observations are kept,
-packets themselves are never stored).
-
-Command-line helpers (run from the project root):
-
-    python -m src.live_capture --list-interfaces
-    python -m src.live_capture --test-capture "WiFi" --seconds 15
-    python -m src.live_capture --test-demo --seconds 15
-"""
-
 import ipaddress
 import platform
 import random
@@ -68,10 +44,6 @@ class CaptureError(Exception):
 # ============================================================
 
 def capture_status():
-    """
-    Check whether live capture can work. Returns (available, message).
-    Never raises: problems are returned as a message for the dashboard.
-    """
     try:
         from scapy.all import conf
     except ImportError:
@@ -91,10 +63,6 @@ def capture_status():
 
 
 def list_interfaces():
-    """
-    Interfaces Scapy can capture on, most useful first (those with a normal
-    IPv4 address). Each item: {name, description, ip, label}.
-    """
     from scapy.all import get_working_ifaces
 
     interfaces = []
@@ -164,10 +132,6 @@ _IP_PROTOCOLS = {6: "tcp", 17: "udp", 1: "icmp", 58: "icmp"}
 
 
 def packet_to_info(packet):
-    """
-    Convert one Scapy packet to PacketInfo, or None for non-IP frames.
-    Raises on malformed packets (the caller counts and skips them).
-    """
     from scapy.layers.inet import IP
     from scapy.layers.inet6 import IPv6
 
@@ -175,8 +139,7 @@ def packet_to_info(packet):
         ip = packet[IP]
         ttl = int(ip.ttl)
         protocol_number = int(ip.proto)
-        # ip.len can be 0 or wrong on captured outgoing packets when the
-        # network card does segmentation offload; fall back to the bytes seen.
+        # ip.len can be 0 on outgoing packets (NIC offload)
         ip_length = int(ip.len) if ip.len else len(ip)
     elif IPv6 in packet:
         ip = packet[IPv6]
@@ -194,9 +157,7 @@ def packet_to_info(packet):
         sport = int(getattr(payload, "sport", 0) or 0)
         dport = int(getattr(payload, "dport", 0) or 0)
     elif protocol == "icmp":
-        # Echo request/reply share an identifier, so a ping and its reply
-        # form one bidirectional flow (as in Argus). Other ICMP messages are
-        # grouped by type/code.
+        # a ping request and its reply form one flow
         icmp_type = int(getattr(payload, "type", 0) or 0)
         if icmp_type in (0, 8, 128, 129):
             sport = dport = int(getattr(payload, "id", 0) or 0)
@@ -227,14 +188,6 @@ DEMO_SCENARIOS = {
 
 
 class DemoTrafficGenerator:
-    """
-    Creates synthetic PacketInfo objects for one window. Profiles are modelled
-    on 5G-NIDD flow statistics (medians per traffic type in the raw dataset),
-    so the trained model sees values from the domain it was trained on.
-    Addresses use the 10.99.0.0/16 documentation-style range and nothing is
-    ever transmitted. The model decides benign/malicious - the generator does
-    not label anything.
-    """
 
     NORMAL_PROFILES = ("udp_stream", "udp_small", "icmp_ping", "tcp_session")
     SUSPICIOUS_PROFILES = ("syn_flood_like", "icmp_flood_like", "slow_rate_like", "scan_like")
@@ -276,8 +229,7 @@ class DemoTrafficGenerator:
         server = f"10.99.1.{rnd.randint(2, 254)}"
         cport = rnd.randint(32768, 60999)
 
-        # (protocol, server port, packets, duration, frame-size range,
-        #  originator TTL, reply TTL, share of packets from originator)
+        # (protocol, port, packets, duration, size range, TTL out, TTL back, outgoing share)
         if profile == "udp_stream":
             count = rnd.randint(150, 230)
             spec = ("udp", 443, count, rnd.uniform(4.0, 4.9), (1150, 1400), 117, 64, 0.9)
@@ -297,8 +249,7 @@ class DemoTrafficGenerator:
             spec = ("tcp", rnd.randint(1, 1024), 1, 0.0, (58, 58), rnd.randint(40, 52), 64, 1.0)
 
         protocol, sport_server, count, duration, (low, high), ttl_out, ttl_back, out_share = spec
-        # Profiles describe 5 s windows; for shorter windows keep the packet
-        # rate realistic by sending proportionally fewer packets.
+        # fewer packets for windows shorter than 5 s
         longest = window_seconds * 0.95
         if duration > longest:
             count = max(min(count, 2), round(count * longest / duration))
@@ -332,11 +283,6 @@ class DemoTrafficGenerator:
 # ============================================================
 
 class LiveMonitor:
-    """
-    Background monitor. Every `window_seconds` the packets collected so far
-    are turned into flow records, classified with the existing model and
-    appended to a rolling history.
-    """
 
     def __init__(self, predictor, mode="demo", window_seconds=DEFAULT_WINDOW_SECONDS,
                  interface=None, host_filter=None, demo_scenario="auto",
@@ -419,8 +365,7 @@ class LiveMonitor:
         except Exception as error:
             raise CaptureError(explain_capture_error(error, self.interface)) from error
 
-        # The sniffer opens the adapter in its own thread: give it a moment
-        # and report any failure now instead of failing silently later.
+        # wait briefly so capture errors are reported straight away
         time.sleep(0.8)
         failure = getattr(self._sniffer, "exception", None)
         if failure is not None or not self._sniffer.running:

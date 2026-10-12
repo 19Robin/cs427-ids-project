@@ -1,13 +1,3 @@
-"""
-Builds the JSON payload the React dashboard displays.
-
-Every number comes from the files in results/ (written by the scripts in
-src/). Values derived here (class balance from confusion matrices, the
-standardised mean difference, attack categories) are labelled as derived in
-the dashboard. Nothing is invented: a missing file gives null and the page
-shows how to create it.
-"""
-
 from pathlib import Path
 import json
 import math
@@ -27,8 +17,7 @@ CONTINUOUS_FEATURES = ["Rate", "Packet_Count", "Mean_Packet_Size", "TTL"]
 # Khan et al. (2025), DL-IID, IEEE Access 13: quantised model size
 DL_IID_SIZE_KB = 108.42
 
-# CICIoT2023 labels whose attack family also exists in 5G-NIDD
-# (5G-NIDD: ICMP/UDP/SYN/HTTP flood, slow-rate DoS, SYN/TCP-connect/UDP scan).
+# CICIoT2023 attacks with a comparable attack type in 5G-NIDD
 COMPARABLE_IN_5G = {
     "DDOS-ICMP_FLOOD": "ICMP Flood",
     "DDOS-UDP_FLOOD": "UDP Flood",

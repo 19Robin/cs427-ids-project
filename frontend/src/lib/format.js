@@ -1,12 +1,10 @@
-// Formatting helpers. Values from the API are fractions (0-1) unless stated.
-
 export const COLORS = {
   fiveg: "#2a78d6",
   cic: "#eb6834",
   neutral: "#94a3b8",
   benign: "#10b981",
   malicious: "#ef4444",
-  // metric colours (always paired with a legend / label)
+  // metric colours
   accuracy: "#4a3aa7",
   precision: "#1baf7a",
   recall: "#e87ba4",
@@ -59,7 +57,7 @@ export function pp(value, digits = 2) {
   return `${value > 0 ? "+" : ""}${value.toFixed(digits)} pp`;
 }
 
-// Wrap long model names onto two lines for chart axes
+// Short model names
 export function shortModel(name) {
   return name
     .replace("Random Forest", "RF")
@@ -67,7 +65,7 @@ export function shortModel(name) {
     .replace("Decision Tree", "Dec. Tree");
 }
 
-// Very short model names for crowded chart axes
+// Shorter model names for chart axes
 export function axisModel(name) {
   if (name.includes("depth")) return "RF d≤12";
   if (name.startsWith("Random Forest")) return "RF";

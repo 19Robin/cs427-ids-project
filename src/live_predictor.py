@@ -1,24 +1,3 @@
-"""
-live_predictor.py
-
-Loads an EXISTING trained model (default: models/random_forest_10_trees.joblib)
-and classifies live flow records. The model is only used for inference:
-nothing here calls fit() and live traffic is never used for training.
-
-Before use, the model is checked against what the live features produce:
-
-  * feature_names_in_ must equal FEATURES (same names, same order).
-    The 10-tree Random Forest stores
-    ['Rate', 'Packet_Count', 'Mean_Packet_Size', 'TTL', 'TCP', 'UDP', 'ICMP'].
-  * classes_ must contain 0 (benign) and 1 (malicious); preprocess_data.py sets
-    Target = 1 when the 5G-NIDD Label is "Malicious", else 0. The malicious
-    probability is read from the predict_proba column of class 1 (looked up via
-    classes_, not assumed to be column 1).
-  * For a Random Forest, predict_proba averages each tree's leaf class
-    proportions (leaves can be mixed because identical 5G-NIDD feature vectors
-    occur with both labels). It is a model score, not a calibrated probability.
-"""
-
 from pathlib import Path
 
 import joblib
@@ -98,16 +77,11 @@ class LivePredictor:
         }
 
     def predict(self, records):
-        """
-        Classify flow records (dicts from FlowAggregator.flush()).
-        Returns (predictions, malicious_probabilities) as numpy arrays.
-        """
         X = records_to_model_input(records)
         if X.empty:
             return np.array([], dtype=int), np.array([], dtype=float)
         if not np.isfinite(X.to_numpy()).all():
-            # Should not happen (the extractor never produces NaN/inf), but a
-            # bad row must not crash the monitor: replace and carry on.
+            # replace NaN/inf so one bad row cannot crash the monitor
             X = X.replace([np.inf, -np.inf], np.nan).fillna(0.0)
         predictions = self.model.predict(X).astype(int)
         probabilities = self.model.predict_proba(X)[:, self.malicious_column]

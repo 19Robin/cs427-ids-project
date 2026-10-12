@@ -1,18 +1,3 @@
-"""
-FastAPI backend for the React dashboard.
-
-Run from the project root:
-
-    uvicorn api.main:app --port 8000
-
-then open http://localhost:8000. The server answers /api/* requests and also
-serves the built React app from frontend/dist (build it with `npm run build`
-inside frontend/; the built files are committed, so Node.js is only needed
-when you change the frontend).
-
-All models are loaded read-only. Nothing here trains or retrains a model.
-"""
-
 from pathlib import Path
 import threading
 import time
@@ -36,7 +21,7 @@ try:
     )
     from src.live_predictor import LivePredictor, ModelCompatibilityError
     LIVE_IMPORT_ERROR = None
-except Exception as error:  # scapy missing etc.: everything else still works
+except Exception as error:  # live capture is optional
     LIVE_IMPORT_ERROR = str(error)
 
 
@@ -48,7 +33,7 @@ DIST_DIR = BASE_DIR / "frontend" / "dist"
 
 app = FastAPI(title="5G IDS Cross-Domain Dashboard API")
 
-# Vite's dev server (npm run dev) runs on another port during development.
+# allow the Vite dev server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -71,7 +56,7 @@ def load_model(path):
             if not path.exists():
                 return None
             model = joblib.load(path)
-            # One flow at a time: threads would only add start-up overhead.
+            # single thread for one-row predictions
             if "n_jobs" in model.get_params():
                 model.set_params(n_jobs=1)
             _models[path] = model
@@ -273,8 +258,8 @@ def live_state(flows: int = 200):
     require_live()
     if _monitor is None:
         return {"active": False}
-    state = _monitor.snapshot()      # also keeps the monitor's watchdog alive
-    # the monitor appends new flows at the end: send the newest ones, newest first
+    state = _monitor.snapshot()      # also keeps the monitor alive
+    # newest flows first
     state["flows"] = list(reversed(state["flows"]))[:max(0, flows)]
     state["active"] = True
     return clean(state)

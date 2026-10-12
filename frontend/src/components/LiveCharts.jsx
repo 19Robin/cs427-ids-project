@@ -16,10 +16,6 @@ import {
 import { Card, Legend, Segmented } from "./ui";
 import { COLORS } from "../lib/format";
 
-// Live charts for the Live IDS Monitoring page. Animations are off on
-// purpose: data refreshes every second and re-animating would make the
-// curves jump. Smoothness comes from monotone curves and a rolling window.
-
 const toMs = (iso) => new Date(iso).getTime();
 const clock = (ms) =>
   new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });

@@ -13,8 +13,6 @@ import {
 } from "recharts";
 import { COLORS } from "../lib/format";
 
-// Shared Recharts styling: thin bars, quiet grid, rounded data ends.
-
 export function ChartTooltip({ active, payload, label, format = (v) => v, labelFormat }) {
   if (!active || !payload?.length) return null;
   return (
@@ -35,10 +33,7 @@ export function ChartTooltip({ active, payload, label, format = (v) => v, labelF
 
 const pctTick = (v) => `${v}%`;
 
-/**
- * Grouped vertical bars.
- * data: [{ name, [seriesKey]: value }]   series: [{ key, label, color }]
- */
+// Grouped vertical bars
 export function GroupedBars({
   data,
   series,
@@ -81,9 +76,7 @@ export function GroupedBars({
   );
 }
 
-/**
- * Horizontal bars, one series. data: [{ name, value, color?, label? }]
- */
+// Horizontal bars
 export function HBars({ data, height, unit = "%", domain, color = COLORS.cic, labelFormat, tickWidth = 150, reference }) {
   const h = height ?? Math.max(160, data.length * 30 + 40);
   return (

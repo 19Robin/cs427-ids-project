@@ -1,18 +1,3 @@
-"""
-extract_demo_samples.py
-
-Saves a small number of REAL records from the 5G-NIDD held-out test split to
-results/demo_samples_5g_nidd.csv, so the dashboard's Prediction Demo can offer
-genuine example inputs instead of arbitrary numbers.
-
-The split is recreated exactly as in train_model.py / test_lightweight_models.py
-(80/20, stratified, random_state=42), and samples are taken only from the
-20% test split, so none of them were seen by the model during training.
-
-Run from anywhere:
-    python src/extract_demo_samples.py
-"""
-
 from pathlib import Path
 
 import pandas as pd

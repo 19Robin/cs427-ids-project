@@ -295,9 +295,7 @@ print("=" * 80)
 
 attack_results = []
 
-# Use the original CIC label if available.
-# The processed file does not contain it, so this section
-# will be populated by matching row positions later.
+# Attack types are analysed in test_attack_types.py
 
 print(
     "\nThe processed CIC file contains only the common features "
