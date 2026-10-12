@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FlaskConical, Pause, Play, Square, Trash2 } from "lucide-react";
+import { Download, FlaskConical, Pause, Play, Square, Trash2 } from "lucide-react";
 import { Badge, Button, Card, Callout, EmptyState, PageHeader, Section, Segmented, Select, Stat, Table } from "../components/ui";
 import { api } from "../lib/api";
 import LiveCharts from "../components/LiveCharts";
@@ -7,6 +7,28 @@ import { COLORS, num } from "../lib/format";
 
 const time = (iso) => new Date(iso).getTime();
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+function ExportMenu({ disabled }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <Button variant="ghost" icon={Download} onClick={() => setOpen(!open)} disabled={disabled}>Export</Button>
+      {open && !disabled && (
+        <div className="absolute right-0 z-20 mt-2 w-64 overflow-hidden rounded-xl border border-line bg-white shadow-lg" onMouseLeave={() => setOpen(false)}>
+          {[
+            { href: "/api/live/export/windows.csv", label: "Windows (CSV)", hint: "one row per monitoring window" },
+            { href: "/api/live/export/flows.csv", label: "Flows (CSV)", hint: "every classified flow with its 7 features" },
+          ].map((item) => (
+            <a key={item.href} href={item.href} download onClick={() => setOpen(false)} className="block px-4 py-2.5 hover:bg-slate-50">
+              <div className="text-sm font-semibold text-ink">{item.label}</div>
+              <div className="text-xs text-muted">{item.hint}</div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function LiveMonitor({ status }) {
   const live = status?.live;
@@ -19,11 +41,31 @@ export default function LiveMonitor({ status }) {
   const [state, setState] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [windows, setWindows] = useState([]);
   const poll = useRef(null);
+  const history = useRef({ session: null, since: 0, windows: [] });
 
+  // the server only sends windows newer than `since`; the full history is kept here
   const refresh = useCallback(async () => {
     try {
-      setState(await api.liveState());
+      const h = history.current;
+      const next = await api.liveState(h.since);
+      if (next.active) {
+        if (next.started_at !== h.session || next.window_count < h.since) {
+          const fetchedFrom = h.since;
+          h.session = next.started_at;
+          h.since = 0;
+          h.windows = [];
+          if (fetchedFrom > 0) Object.assign(next, await api.liveState(0));
+        }
+        const fresh = next.windows.filter((w) => w.Window > h.since);
+        if (fresh.length) {
+          h.windows = [...h.windows, ...fresh].slice(-2000);
+          h.since = fresh[fresh.length - 1].Window;
+        }
+        setWindows(h.windows);
+      }
+      setState(next);
     } catch (e) {
       setError(e.message);
     }
@@ -94,10 +136,11 @@ export default function LiveMonitor({ status }) {
   }
   async function clear() {
     await api.liveClear().catch((e) => setError(e.message));
+    history.current.windows = [];
+    setWindows([]);
     refresh();
   }
 
-  const windows = state?.windows ?? [];
   const latest = windows[windows.length - 1];
   const isDemo = state?.mode === "demo";
 
@@ -180,6 +223,7 @@ export default function LiveMonitor({ status }) {
               </Button>
             )}
             <Button variant="ghost" icon={Trash2} onClick={clear} disabled={!state?.active}>Clear</Button>
+            <ExportMenu disabled={!windows.length} />
           </div>
         </div>
 

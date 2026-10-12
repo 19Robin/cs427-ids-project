@@ -291,6 +291,12 @@ Open http://localhost:8000 and choose **Live IDS Monitoring** in the sidebar.
   suspicious burst every 10 windows; the burst profiles imitate 5G-NIDD attack
   flow statistics, and the model makes the decision.
 - **Stop** stops capture; **Clear** empties the tables and graphs.
+- **Graphs:** show a 1, 2 or 5 minute window. Use ◀ ▶, drag the threat chart
+  or move the slider under the overview strip to look back through the
+  session (up to 2,000 windows); **Live** jumps back to the newest data.
+- **Export:** downloads the session as CSV (one file per window, one per
+  classified flow). The 5G Edge IDS Monitor can export its replay as CSV, and
+  **Download all results** in the sidebar gives a ZIP of the `results/` folder.
 
 ### Controlled demonstration with an Android phone
 

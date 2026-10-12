@@ -1,18 +1,21 @@
 from pathlib import Path
+from datetime import datetime
+import io
 import threading
 import time
+import zipfile
 
 import joblib
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from api.results import (
-    BASE_DIR, FEATURES, IMPROVED_DIR, build_payload, clean, feature_ranges, read_csv,
+    BASE_DIR, FEATURES, IMPROVED_DIR, RESULTS_DIR, build_payload, clean, feature_ranges, read_csv,
 )
 
 try:
@@ -228,6 +231,8 @@ def live_start(request: LiveStartRequest):
             interface=request.interface,
             host_filter=request.host_filter,
             demo_scenario=request.scenario,
+            flow_history=20000,
+            window_history=2000,
         )
         try:
             monitor.start()
@@ -254,15 +259,66 @@ def live_clear():
 
 
 @app.get("/api/live/state")
-def live_state(flows: int = 200):
+def live_state(flows: int = 200, since: int = 0):
     require_live()
     if _monitor is None:
         return {"active": False}
     state = _monitor.snapshot()      # also keeps the monitor alive
     # newest flows first
     state["flows"] = list(reversed(state["flows"]))[:max(0, flows)]
+    # only windows the browser has not seen yet
+    state["windows"] = [w for w in state["windows"] if w["Window"] > since]
     state["active"] = True
     return clean(state)
+
+
+def csv_response(frame, name):
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return Response(
+        frame.to_csv(index=False),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{name}_{stamp}.csv"'},
+    )
+
+
+@app.get("/api/live/export/windows.csv")
+def live_export_windows():
+    require_live()
+    if _monitor is None:
+        raise HTTPException(404, "No monitoring session to export.")
+    frame = pd.DataFrame(_monitor.snapshot()["windows"])
+    if frame.empty:
+        raise HTTPException(404, "No windows recorded yet.")
+    frame.insert(1, "Mode", _monitor.mode)
+    return csv_response(frame, "live_ids_windows")
+
+
+@app.get("/api/live/export/flows.csv")
+def live_export_flows():
+    require_live()
+    if _monitor is None:
+        raise HTTPException(404, "No monitoring session to export.")
+    frame = pd.DataFrame(_monitor.snapshot()["flows"])
+    if frame.empty:
+        raise HTTPException(404, "No flows recorded yet.")
+    columns = ["Time", "Window", "Source", "Destination", "Protocol"] + FEATURES + [
+        "Duration", "Bytes", "Prediction", "Malicious_Probability"]
+    return csv_response(frame[[c for c in columns if c in frame.columns]], "live_ids_flows")
+
+
+@app.get("/api/export/results.zip")
+def export_results():
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(RESULTS_DIR.rglob("*")):
+            if path.is_file():
+                archive.write(path, path.relative_to(RESULTS_DIR.parent))
+    stamp = datetime.now().strftime("%Y%m%d")
+    return Response(
+        buffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="cs427_ids_results_{stamp}.zip"'},
+    )
 
 
 # ============================================================

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, RotateCcw, Square } from "lucide-react";
+import { Download, Play, RotateCcw, Square } from "lucide-react";
 import { Button, Card, Callout, EmptyState, Legend, PageHeader, Segmented, Stat, Table } from "../components/ui";
 import { api } from "../lib/api";
 
@@ -12,6 +12,20 @@ const OUTCOME = {
 
 const outcome = (f) => (f.prediction ? (f.target ? "TP" : "FP") : f.target ? "FN" : "TN");
 const protocol = (f) => (f.TCP >= 0.5 ? "TCP" : f.UDP >= 0.5 ? "UDP" : f.ICMP >= 0.5 ? "ICMP" : "Other");
+function exportReplay(feed, shown) {
+  const columns = ["flow", "Rate", "Packet_Count", "Mean_Packet_Size", "TTL", "TCP", "UDP", "ICMP", "attack_type", "target", "prediction", "outcome", "latency_ms"];
+  const label = { TP: "attack caught", FN: "attack missed", FP: "false alarm", TN: "benign, no alert" };
+  const rows = feed.flows.slice(0, shown).map((f, i) =>
+    [i + 1, f.Rate, f.Packet_Count, f.Mean_Packet_Size, f.TTL, f.TCP, f.UDP, f.ICMP, f.attack_type, f.target, f.prediction, label[outcome(f)], f.latency_ms.toFixed(3)].join(",")
+  );
+  const blob = new Blob([[columns.join(","), ...rows].join("\n")], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `edge_ids_replay_${feed.dataset}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
 const SPEEDS = { fast: 15, normal: 60, slow: 180 };
 
 export default function EdgeMonitor({ status }) {
@@ -112,6 +126,9 @@ export default function EdgeMonitor({ status }) {
               <Button variant="ghost" icon={Square} onClick={stop}>Stop</Button>
             ) : (
               <Button variant="blue" icon={feed ? RotateCcw : Play} onClick={start}>{feed ? "Replay" : "Start replay"}</Button>
+            )}
+            {feed && shown > 0 && (
+              <Button variant="ghost" icon={Download} onClick={() => exportReplay(feed, shown)}>Export CSV</Button>
             )}
           </div>
         </div>

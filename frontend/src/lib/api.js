@@ -28,5 +28,5 @@ export const api = {
   liveStart: (payload) => request("/api/live/start", { method: "POST", body: JSON.stringify(payload) }),
   liveStop: () => request("/api/live/stop", { method: "POST" }),
   liveClear: () => request("/api/live/clear", { method: "POST" }),
-  liveState: () => request("/api/live/state"),
+  liveState: (since = 0) => request(`/api/live/state?since=${since}`),
 };

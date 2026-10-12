@@ -12,6 +12,7 @@ import {
   Shuffle,
   TreePine,
   X,
+  Download,
 } from "lucide-react";
 import { api } from "./lib/api";
 import Overview from "./pages/Overview";
@@ -106,6 +107,17 @@ function Sidebar({ page, onNavigate }) {
           </div>
         ))}
       </nav>
+
+      <div className="px-3 pb-3">
+        <a
+          href="/api/export/results.zip"
+          download
+          className="flex items-center gap-3 rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
+        >
+          <Download className="h-4 w-4 text-slate-500" />
+          Download all results
+        </a>
+      </div>
 
       <div className="border-t border-white/10 px-5 py-4 text-[11px] leading-relaxed text-slate-400">
         <div className="mb-2 flex flex-col gap-1">
