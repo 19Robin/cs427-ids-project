@@ -1,6 +1,6 @@
 # Cross-Domain Evaluation of a Lightweight ML Intrusion Detection System for 5G / Mobile Network Traffic
 
-CS427 - Mobile Communications | Samuela Robin (S11199961) & Katea Yavunitu (S1114901)
+CS427 - Mobile Communications | Samuela Robin (S11199961) & Katea Yavunitu (S11149012)
 
 ## Research question
 
@@ -13,6 +13,82 @@ trained on traffic from a **5G mobile network** perform when it is applied,
                                                      |-> in-domain test: 20% held-out 5G-NIDD
 CICIoT2023 (non-5G IoT lab)  ->  same 7 features ----> cross-domain test: no retraining
 ```
+
+## How to run
+
+### 1. Requirements
+
+- Python 3.10 or newer
+- Git
+- For live packet capture only: [Npcap](https://npcap.com/#download) (Windows)
+- Node.js is **not** needed to run the dashboard; the built website is included
+
+### 2. Set up (first time only)
+
+```bat
+git clone https://github.com/19Robin/cs427-ids-project.git
+cd cs427-ids-project
+python -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
+```
+
+On macOS / Linux, activate with `source .venv/bin/activate` instead.
+
+### 3. Start the dashboard
+
+```bat
+.venv\Scripts\activate.bat
+uvicorn api.main:app --port 8000
+```
+
+Open **http://localhost:8000** in a browser. Press `Ctrl+C` in the terminal to stop.
+
+- For **live packet capture**, open the terminal with **Run as administrator**.
+- To open the dashboard on a phone connected to the laptop's hotspot, start it
+  with `uvicorn api.main:app --host 0.0.0.0 --port 8000` and browse to
+  `http://192.168.137.1:8000` on the phone.
+
+The research pages work straight away because the results are in `results/`.
+The Prediction Demo, Edge IDS Monitor and Live IDS Monitoring pages also need
+the trained models in `models/`, which are not stored in Git (see step 4).
+
+### 4. Re-create the results and models (optional)
+
+Download the datasets and place them in:
+
+```
+data/raw/5g_nidd.csv
+data/raw/cic_iot/Merged01.csv ... Merged05.csv
+```
+
+Then run, in this order:
+
+```bat
+python src\preprocess_data.py
+python src\train_model.py
+python src\test_cross_domain.py
+python src\test_lightweight_models.py
+python src\test_lightweight_cross_domain.py
+python src\test_other_models.py
+python src\test_attack_types.py
+python src\analyse_feature_shift.py
+python src\extract_demo_samples.py
+python src\run_improved_experiments.py
+```
+
+`run_improved_experiments.py` takes the longest. Restart the dashboard afterwards.
+
+### 5. Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `ModuleNotFoundError` | Activate `.venv`, then `pip install -r requirements.txt` |
+| A page says "Model file not available" | Run step 4 (at least `test_lightweight_models.py` and `run_improved_experiments.py`) |
+| Live capture says Npcap is missing | Install Npcap with *WinPcap API-compatible Mode* ticked, then restart the terminal |
+| Live capture permission error | Start the terminal with **Run as administrator** |
+| Port 8000 already in use | Use another port, e.g. `--port 8001` |
+| Dashboard looks out of date after `git pull` | Restart the server and press `Ctrl+F5` in the browser |
 
 ## Why this is a mobile-communications project
 
