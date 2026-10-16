@@ -90,6 +90,21 @@ python src\run_improved_experiments.py
 | Port 8000 already in use | Use another port, e.g. `--port 8001` |
 | Dashboard looks out of date after `git pull` | Restart the server and press `Ctrl+F5` in the browser |
 
+### 6. Host it online (Render)
+
+The dashboard can be hosted for free on [Render](https://render.com) using `render.yaml`.
+
+1. Commit the two model files the dashboard needs (they are allowed in `.gitignore`):
+   ```bash
+   git add models/edge_ids_model.joblib models/random_forest_10_trees.joblib
+   git commit -m "Add trained models for online hosting"
+   git push
+   ```
+2. On Render, choose **New → Blueprint**, connect this GitHub repository and pick the branch. Render reads `render.yaml`, installs `requirements.txt` and starts `uvicorn api.main:app --host 0.0.0.0 --port $PORT`.
+3. Open the `onrender.com` link when the deploy finishes. On the free plan the app sleeps when idle, so the first visit can take about 30 seconds.
+
+Online, every research page, the 5G Edge IDS Monitor, the Prediction Demo and the results download work. Live IDS Monitoring works in **Demo (simulation)** mode only: a cloud server cannot see your laptop's or phone's traffic, so real capture still has to be run locally (`IDS_HOSTED=1` in `render.yaml` turns real capture off).
+
 ## Why this is a mobile-communications project
 
 - The training data, **5G-NIDD**, is network traffic generated on a real 5G

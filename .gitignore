@@ -29,3 +29,7 @@ Thumbs.db
 models/*.joblib
 # Trained models
 models/*.joblib
+
+# Models the dashboard needs when hosted online
+!models/edge_ids_model.joblib
+!models/random_forest_10_trees.joblib

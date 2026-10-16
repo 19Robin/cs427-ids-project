@@ -1,4 +1,5 @@
 import ipaddress
+import os
 import platform
 import random
 import threading
@@ -44,6 +45,11 @@ class CaptureError(Exception):
 # ============================================================
 
 def capture_status():
+    if os.environ.get("IDS_HOSTED"):
+        return False, (
+            "This online version runs on a cloud server, which cannot see your network. "
+            "Real capture only works when the app runs on your own computer."
+        )
     try:
         from scapy.all import conf
     except ImportError:
