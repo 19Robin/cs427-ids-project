@@ -18,7 +18,7 @@ CICIoT2023 (non-5G IoT lab)  ->  same 7 features ----> cross-domain test: no ret
 
 ### 1. Requirements
 
-- Python 3.10 or newer
+- Python 3.12 or newer
 - Git
 - For live packet capture only: [Npcap](https://npcap.com/#download) (Windows)
 - Node.js is **not** needed to run the dashboard; the built website is included
