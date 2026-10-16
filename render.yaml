@@ -8,6 +8,6 @@ services:
     healthCheckPath: /api/status
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11.9"
+        value: "3.12.10"
       - key: IDS_HOSTED
         value: "1"
